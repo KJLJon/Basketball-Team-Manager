@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900;
+  }
+
+  * {
+    @apply touch-manipulation;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
+  }
+
+  .btn-secondary {
+    @apply btn bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+  }
+
+  .btn-success {
+    @apply btn bg-green-600 text-white hover:bg-green-700 focus:ring-green-500;
+  }
+
+  .btn-lg {
+    @apply px-6 py-4 text-lg min-h-[60px];
+  }
+
+  .input {
+    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+  }
+
+  .card {
+    @apply bg-white rounded-lg shadow-md p-4;
+  }
+
+  .stat-button {
+    @apply flex flex-col items-center justify-center p-4 bg-white border-2 border-gray-300 rounded-lg active:bg-gray-100 active:scale-95 transition-all min-h-[80px] touch-manipulation;
+  }
+
+  .stat-button-active {
+    @apply border-blue-500 bg-blue-50;
+  }
+
+  .player-badge {
+    @apply inline-flex items-center justify-center w-10 h-10 rounded-full bg-blue-600 text-white font-bold text-sm;
+  }
+
+  .nav-link {
+    @apply flex flex-col items-center justify-center py-2 px-3 text-gray-600 hover:text-blue-600 transition-colors;
+  }
+
+  .nav-link-active {
+    @apply text-blue-600 bg-blue-50 rounded-lg;
+  }
+}
+
+/* Mobile-first responsive utilities */
+@layer utilities {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .touch-none {
+    touch-action: none;
+  }
+}
