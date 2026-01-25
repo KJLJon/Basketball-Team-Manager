@@ -107,7 +107,7 @@ export function GameList({ games, onCreateGame, onDeleteGame, onStartGame }: Gam
       {upcomingGames.length > 0 && (
         <div>
           <h3 className="text-lg font-semibold mb-2">Upcoming Games</h3>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {upcomingGames.map(game => (
               <Card
                 key={game.id}
@@ -150,7 +150,7 @@ export function GameList({ games, onCreateGame, onDeleteGame, onStartGame }: Gam
       {completedGames.length > 0 && (
         <div>
           <h3 className="text-lg font-semibold mb-2">Past Games</h3>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {completedGames.slice(0, 5).map(game => (
               <Card
                 key={game.id}

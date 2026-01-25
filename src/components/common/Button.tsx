@@ -21,8 +21,8 @@ export function Button({
   };
 
   const sizeClasses = {
-    sm: 'px-3 py-1 text-sm',
-    md: 'px-4 py-2',
+    sm: 'px-3 py-2 text-sm min-h-[40px]',
+    md: 'px-4 py-3',
     lg: 'btn-lg',
   };
 

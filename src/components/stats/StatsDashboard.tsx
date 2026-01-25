@@ -117,7 +117,7 @@ export function StatsDashboard({ players }: StatsDashboardProps) {
       </Card>
 
       {/* Players List */}
-      <div className="space-y-2">
+      <div className="space-y-3">
         {sortedStats.length === 0 ? (
           <Card>
             <p className="text-center text-gray-500 py-8">

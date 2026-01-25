@@ -112,7 +112,7 @@ export function GameSetup({ game, players, onUpdateAttendance, onStartGame }: Ga
         </div>
       </Card>
 
-      <div className="fixed bottom-20 left-0 right-0 p-4 bg-white border-t space-y-2">
+      <div className="fixed bottom-20 left-0 right-0 p-4 pb-6 bg-white border-t space-y-3">
         <Button
           onClick={handleSaveAndStart}
           variant="success"

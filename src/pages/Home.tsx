@@ -83,7 +83,7 @@ export function Home() {
       {/* Quick Actions */}
       <Card>
         <h3 className="font-semibold mb-3">Quick Actions</h3>
-        <div className="space-y-2">
+        <div className="space-y-3">
           <Link to="/players">
             <Button variant="secondary" className="w-full">
               Manage Players

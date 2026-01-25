@@ -82,7 +82,7 @@ export function PlayerList({
         </Card>
       )}
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         {filteredPlayers.length === 0 ? (
           <Card>
             <p className="text-center text-gray-500 py-8">

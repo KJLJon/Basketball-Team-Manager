@@ -186,7 +186,7 @@ export function RotationSelector({ game, players, onRefresh, onNextSwap }: Rotat
       </div>
 
       {/* Action Buttons */}
-      <div className="fixed bottom-20 left-0 right-0 p-4 bg-white border-t space-y-2">
+      <div className="fixed bottom-20 left-0 right-0 p-4 pb-6 bg-white border-t space-y-3">
         {!currentRotation ? (
           <Button
             onClick={handleSaveRotation}
