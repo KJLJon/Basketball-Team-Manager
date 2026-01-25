@@ -33,7 +33,7 @@ export function GameDayPage() {
     );
   }
 
-  if (game.status !== 'in-progress') {
+  if (game.status === 'scheduled') {
     return (
       <div className="p-4">
         <div className="text-center py-8">

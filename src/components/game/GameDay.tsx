@@ -4,6 +4,7 @@ import type { Game, Player, Quarter, SwapNumber } from '@/types';
 import { Button } from '../common/Button';
 import { Card } from '../common/Card';
 import { RotationSelector } from './RotationSelector';
+import { RotationHistory } from './RotationHistory';
 import { CurrentPlayerCard } from './CurrentPlayerCard';
 import { EditableStatRow } from './EditableStatRow';
 import { GameService } from '@/services/game';
@@ -18,7 +19,10 @@ interface GameDayProps {
 
 export function GameDay({ game, players, onRefresh }: GameDayProps) {
   const navigate = useNavigate();
-  const [currentView, setCurrentView] = useState<'rotation' | 'current' | 'stats'>('rotation');
+  const isCompleted = game.status === 'completed';
+  const [currentView, setCurrentView] = useState<'rotation' | 'current' | 'stats'>(
+    isCompleted ? 'stats' : 'rotation'
+  );
   const [sortBy, setSortBy] = useState<'name' | 'number'>('name');
 
   const attendingPlayers = players.filter(p => game.attendance.includes(p.id));
@@ -120,23 +124,36 @@ export function GameDay({ game, players, onRefresh }: GameDayProps) {
   return (
     <div className="pb-24">
       {/* Game Header */}
-      <div className="bg-blue-600 text-white p-4 space-y-2">
+      <div className={`text-white p-4 space-y-2 ${isCompleted ? 'bg-gray-600' : 'bg-blue-600'}`}>
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-bold">vs {game.opponent}</h2>
-          <Button size="sm" variant="danger" onClick={handleEndGame}>
-            End Game
-          </Button>
+          {!isCompleted && (
+            <Button size="sm" variant="danger" onClick={handleEndGame}>
+              End Game
+            </Button>
+          )}
+          {isCompleted && (
+            <span className="text-sm bg-white/20 px-3 py-1 rounded-full">
+              Completed
+            </span>
+          )}
         </div>
         <div className="flex justify-between items-center">
           <div>
-            <div className="text-2xl font-bold">
-              Q{game.currentQuarter} - Swap {game.currentSwap}
-            </div>
-            <div className="text-sm">Rotation {rotationNumber}/8</div>
+            {isCompleted ? (
+              <div className="text-lg font-bold">Game Finished</div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  Q{game.currentQuarter} - Swap {game.currentSwap}
+                </div>
+                <div className="text-sm">Rotation {rotationNumber}/8</div>
+              </>
+            )}
           </div>
           <div className="text-right">
-            <div className="text-sm">Players on Court</div>
-            <div className="text-2xl font-bold">{playersOnCourt.length}/5</div>
+            <div className="text-sm">Players Attended</div>
+            <div className="text-2xl font-bold">{attendingPlayers.length}</div>
           </div>
         </div>
       </div>
@@ -151,18 +168,20 @@ export function GameDay({ game, players, onRefresh }: GameDayProps) {
           }`}
           onClick={() => setCurrentView('rotation')}
         >
-          Rotation
+          {isCompleted ? 'Rotations' : 'Rotation'}
         </button>
-        <button
-          className={`flex-1 py-3 font-medium text-sm ${
-            currentView === 'current'
-              ? 'border-b-2 border-blue-600 text-blue-600'
-              : 'text-gray-600'
-          }`}
-          onClick={() => setCurrentView('current')}
-        >
-          Current
-        </button>
+        {!isCompleted && (
+          <button
+            className={`flex-1 py-3 font-medium text-sm ${
+              currentView === 'current'
+                ? 'border-b-2 border-blue-600 text-blue-600'
+                : 'text-gray-600'
+            }`}
+            onClick={() => setCurrentView('current')}
+          >
+            Current
+          </button>
+        )}
         <button
           className={`flex-1 py-3 font-medium text-sm ${
             currentView === 'stats'
@@ -178,12 +197,22 @@ export function GameDay({ game, players, onRefresh }: GameDayProps) {
       {/* Content */}
       <div className="p-4">
         {currentView === 'rotation' && (
-          <RotationSelector
-            game={game}
-            players={attendingPlayers}
-            onRefresh={onRefresh}
-            onNextSwap={handleNextSwap}
-          />
+          <>
+            {isCompleted ? (
+              <RotationHistory
+                game={game}
+                players={attendingPlayers}
+                onRefresh={onRefresh}
+              />
+            ) : (
+              <RotationSelector
+                game={game}
+                players={attendingPlayers}
+                onRefresh={onRefresh}
+                onNextSwap={handleNextSwap}
+              />
+            )}
+          </>
         )}
 
         {currentView === 'current' && (
@@ -215,7 +244,7 @@ export function GameDay({ game, players, onRefresh }: GameDayProps) {
                   </button>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {sortedCurrentPlayers.map(player => {
                     const stats = StatsService.getPlayerGameStats(game.id, player.id);
                     return (
@@ -326,10 +355,22 @@ export function GameDay({ game, players, onRefresh }: GameDayProps) {
                         }}
                       />
                       <EditableStatRow
-                        label="Missed Shots"
-                        value={(stats.attempts1pt - stats.made1pt) + (stats.attempts2pt - stats.made2pt) + (stats.attempts3pt - stats.made3pt)}
+                        label="Miss 1pt"
+                        value={stats.attempts1pt - stats.made1pt}
+                        onIncrement={() => handleIncrementStat(player.id, 'attempts1pt')}
+                        onDecrement={() => handleDecrementStat(player.id, 'attempts1pt')}
+                      />
+                      <EditableStatRow
+                        label="Miss 2pt"
+                        value={stats.attempts2pt - stats.made2pt}
                         onIncrement={() => handleIncrementStat(player.id, 'attempts2pt')}
                         onDecrement={() => handleDecrementStat(player.id, 'attempts2pt')}
+                      />
+                      <EditableStatRow
+                        label="Miss 3pt"
+                        value={stats.attempts3pt - stats.made3pt}
+                        onIncrement={() => handleIncrementStat(player.id, 'attempts3pt')}
+                        onDecrement={() => handleDecrementStat(player.id, 'attempts3pt')}
                       />
                     </div>
                   </Card>

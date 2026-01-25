@@ -50,14 +50,14 @@ export function StatButtonWithDropdown({
       <button
         type="button"
         onClick={handleMainClick}
-        className={`flex-1 rounded-l-lg px-3 py-2 font-medium transition-colors active:scale-95 ${className}`}
+        className={`flex-1 rounded-l px-2 py-1.5 font-medium text-xs transition-colors active:scale-95 ${className}`}
       >
         {label}
       </button>
       <button
         type="button"
         onClick={handleDropdownClick}
-        className={`border-l border-white/20 rounded-r-lg px-2 py-2 transition-colors active:scale-95 ${className}`}
+        className={`border-l border-white/20 rounded-r px-1.5 py-1.5 text-xs transition-colors active:scale-95 ${className}`}
       >
         ⋯
       </button>
