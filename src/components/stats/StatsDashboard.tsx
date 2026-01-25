@@ -4,6 +4,7 @@ import type { Player, PlayerSeasonStats } from '@/types';
 import { Card } from '../common/Card';
 import { Button } from '../common/Button';
 import { StatsService } from '@/services/stats';
+import { GameService } from '@/services/game';
 
 interface StatsDashboardProps {
   players: Player[];
@@ -15,6 +16,10 @@ export function StatsDashboard({ players }: StatsDashboardProps) {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const allStats = StatsService.getAllPlayerSeasonStats();
+
+  // Count unique games (completed or in-progress)
+  const allGames = GameService.getAllGames();
+  const totalGamesPlayed = allGames.filter(g => g.status !== 'scheduled').length;
 
   const sortedStats = [...allStats].sort((a, b) => {
     const aVal = a[sortBy] as number;
@@ -79,7 +84,7 @@ export function StatsDashboard({ players }: StatsDashboardProps) {
         </Card>
         <Card className="text-center">
           <div className="text-2xl font-bold text-green-600">
-            {allStats.reduce((sum, s) => sum + s.gamesPlayed, 0)}
+            {totalGamesPlayed}
           </div>
           <div className="text-sm text-gray-600">Games Played</div>
         </Card>

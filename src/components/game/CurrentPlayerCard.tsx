@@ -46,17 +46,16 @@ export function CurrentPlayerCard({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-3 relative">
+    <div className="bg-white rounded-lg shadow-md p-2 relative">
       {/* Header */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center">
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-1.5">
+          <div className="w-6 h-6 rounded-full bg-blue-600 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">
             {player.number}
           </div>
-          <div>
-            <div className="font-semibold text-sm">{player.name}</div>
-            <div className="text-xs text-gray-500">
-              Pts: {totalPoints} | Reb: {stats.rebounds} | Stl: {stats.steals}
+          <div className="min-w-0">
+            <div className="font-semibold text-xs leading-tight">
+              {player.name} <span className="text-[10px] text-gray-500 font-normal">Pts: {totalPoints} | Reb: {stats.rebounds} | Stl: {stats.steals}</span>
             </div>
           </div>
         </div>
@@ -91,18 +90,18 @@ export function CurrentPlayerCard({
       </div>
 
       {/* Quick Stat Buttons */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-1.5">
         <button
           type="button"
           onClick={() => onIncrementStat('steals')}
-          className="px-2 py-2 bg-yellow-100 text-yellow-900 rounded-lg font-medium text-sm hover:bg-yellow-200 active:scale-95 transition-all"
+          className="px-2 py-1.5 bg-yellow-100 text-yellow-900 rounded font-medium text-xs hover:bg-yellow-200 active:scale-95 transition-all"
         >
           Steal
         </button>
         <button
           type="button"
           onClick={() => onIncrementStat('rebounds')}
-          className="px-2 py-2 bg-purple-100 text-purple-900 rounded-lg font-medium text-sm hover:bg-purple-200 active:scale-95 transition-all"
+          className="px-2 py-1.5 bg-purple-100 text-purple-900 rounded font-medium text-xs hover:bg-purple-200 active:scale-95 transition-all"
         >
           Rebound
         </button>

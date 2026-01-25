@@ -49,8 +49,11 @@ export function GameSetup({ game, players, onUpdateAttendance, onStartGame }: Ga
     onUpdateAttendance(selectedPlayers);
   };
 
+  // Sort players alphabetically by name
+  const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name));
+
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4 pb-40">
       <Card>
         <h2 className="text-xl font-bold mb-2">Game Setup</h2>
         <div className="space-y-1 text-sm text-gray-600">
@@ -66,12 +69,12 @@ export function GameSetup({ game, players, onUpdateAttendance, onStartGame }: Ga
         </h3>
 
         <div className="space-y-2">
-          {players.length === 0 ? (
+          {sortedPlayers.length === 0 ? (
             <p className="text-center text-gray-500 py-4">
               No players available. Add players first.
             </p>
           ) : (
-            players.map(player => (
+            sortedPlayers.map(player => (
               <button
                 key={player.id}
                 type="button"
