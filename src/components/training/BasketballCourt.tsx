@@ -61,25 +61,28 @@ export const BasketballCourt: React.FC<BasketballCourtProps> = ({ currentStep, p
         {/* Court outline */}
         <rect x="10" y="10" width="480" height="450" fill="none" stroke="#fff" strokeWidth="3"/>
 
-        {/* Three-point line (simplified arc) */}
-        <path d="M 60 10 L 60 100 Q 60 360 250 380 Q 440 360 440 100 L 440 10"
+        {/* Half court line (at top) */}
+        <line x1="10" y1="110" x2="490" y2="110" stroke="#fff" strokeWidth="2"/>
+
+        {/* Center circle (at half court) */}
+        <circle cx="250" cy="110" r="60" fill="none" stroke="#fff" strokeWidth="2"/>
+
+        {/* Three-point line (arc at bottom) */}
+        <path d="M 60 460 L 60 360 Q 60 100 250 80 Q 440 100 440 360 L 440 460"
               fill="none" stroke="#fff" strokeWidth="2"/>
 
-        {/* Free throw lane */}
-        <rect x="180" y="10" width="140" height="190" fill="none" stroke="#fff" strokeWidth="2"/>
+        {/* Free throw lane (at bottom) */}
+        <rect x="180" y="270" width="140" height="190" fill="none" stroke="#fff" strokeWidth="2"/>
 
-        {/* Free throw circle */}
-        <circle cx="250" cy="200" r="60" fill="none" stroke="#fff" strokeWidth="2"/>
+        {/* Free throw circle (at bottom) */}
+        <circle cx="250" cy="270" r="60" fill="none" stroke="#fff" strokeWidth="2"/>
 
-        {/* Basket */}
-        <circle cx="250" cy="45" r="8" fill="none" stroke="#E63946" strokeWidth="3"/>
-        <line x1="250" y1="10" x2="250" y2="37" stroke="#E63946" strokeWidth="2"/>
+        {/* Basket (at bottom) */}
+        <circle cx="250" cy="425" r="8" fill="none" stroke="#E63946" strokeWidth="3"/>
+        <line x1="250" y1="433" x2="250" y2="460" stroke="#E63946" strokeWidth="2"/>
 
-        {/* Center circle */}
-        <circle cx="250" cy="350" r="60" fill="none" stroke="#fff" strokeWidth="2"/>
-
-        {/* Half court line */}
-        <line x1="10" y1="350" x2="490" y2="350" stroke="#fff" strokeWidth="2"/>
+        {/* Backboard */}
+        <line x1="220" y1="425" x2="280" y2="425" stroke="#E63946" strokeWidth="3"/>
 
         {/* Movement arrows (show before players so players are on top) */}
         {step.movements?.map((movement, idx) => {
@@ -138,16 +141,18 @@ export const BasketballCourt: React.FC<BasketballCourtProps> = ({ currentStep, p
           }
         })}
 
-        {/* Players */}
-        {step.positions.map((player, idx) => {
+        {/* Ghost positions (previous step) - show where players came from */}
+        {prevStep?.positions.map((player, idx) => {
+          const currentPlayer = step.positions[idx];
+          const isMoving = player.x !== currentPlayer.x || player.y !== currentPlayer.y;
+
+          if (!isMoving) return null;
+
           const x = (player.x / 100) * 480 + 10;
           const y = (player.y / 100) * 450 + 10;
-          const prevPlayer = prevStep?.positions[idx];
-          const isMoving = prevPlayer && (prevPlayer.x !== player.x || prevPlayer.y !== player.y);
 
           return (
-            <g key={`player-${idx}`} className={isMoving ? 'animate-slide-player' : ''}>
-              {/* Player circle */}
+            <g key={`ghost-${idx}`} opacity="0.3" className="ghost-fade-out">
               <circle
                 cx={x}
                 cy={y}
@@ -155,6 +160,47 @@ export const BasketballCourt: React.FC<BasketballCourtProps> = ({ currentStep, p
                 fill={getPlayerColor(player)}
                 stroke="#fff"
                 strokeWidth="2"
+                strokeDasharray="3,3"
+              />
+              <text
+                x={x}
+                y={y + 5}
+                textAnchor="middle"
+                fill="#fff"
+                fontSize="14"
+                fontWeight="bold"
+              >
+                {player.label}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Current Players with smooth transitions */}
+        {step.positions.map((player, idx) => {
+          const x = (player.x / 100) * 480 + 10;
+          const y = (player.y / 100) * 450 + 10;
+          const prevPlayer = prevStep?.positions[idx];
+          const prevX = prevPlayer ? (prevPlayer.x / 100) * 480 + 10 : x;
+          const prevY = prevPlayer ? (prevPlayer.y / 100) * 450 + 10 : y;
+
+          return (
+            <g key={`player-${idx}`}>
+              {/* Player circle with transition */}
+              <circle
+                cx={x}
+                cy={y}
+                r="20"
+                fill={getPlayerColor(player)}
+                stroke="#fff"
+                strokeWidth="2"
+                className="player-transition"
+                style={{
+                  '--from-x': `${prevX}px`,
+                  '--from-y': `${prevY}px`,
+                  '--to-x': `${x}px`,
+                  '--to-y': `${y}px`,
+                } as React.CSSProperties}
               />
 
               {/* Ball indicator */}
@@ -166,7 +212,7 @@ export const BasketballCourt: React.FC<BasketballCourtProps> = ({ currentStep, p
                   fill="#FF6B35"
                   stroke="#000"
                   strokeWidth="1"
-                  className="animate-bounce-ball"
+                  className="animate-bounce-ball player-transition"
                 />
               )}
 
@@ -178,6 +224,7 @@ export const BasketballCourt: React.FC<BasketballCourtProps> = ({ currentStep, p
                 fill="#fff"
                 fontSize="14"
                 fontWeight="bold"
+                className="player-transition"
               >
                 {player.label}
               </text>
