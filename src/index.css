@@ -76,3 +76,59 @@
     touch-action: none;
   }
 }
+
+/* Basketball Training Animations */
+@keyframes slide-player {
+  from {
+    opacity: 0.7;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes draw-line {
+  from {
+    stroke-dashoffset: 1000;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes draw-path {
+  from {
+    stroke-dashoffset: 1000;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes bounce-ball {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-slide-player {
+  animation: slide-player 0.5s ease-in-out;
+  transition: all 0.5s ease-in-out;
+}
+
+.animate-draw-line {
+  stroke-dasharray: 1000;
+  animation: draw-line 0.8s ease-in-out forwards;
+}
+
+.animate-draw-path {
+  stroke-dasharray: 1000;
+  animation: draw-path 0.8s ease-in-out forwards;
+}
+
+.animate-bounce-ball {
+  animation: bounce-ball 0.6s ease-in-out infinite;
+}

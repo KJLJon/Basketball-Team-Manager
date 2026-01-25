@@ -5,6 +5,7 @@ import { Home } from './pages/Home';
 import { Players } from './pages/Players';
 import { Schedule } from './pages/Schedule';
 import { Stats } from './pages/Stats';
+import { Training } from './pages/Training';
 import { GameSetupPage } from './pages/GameSetupPage';
 import { GameDayPage } from './pages/GameDayPage';
 import { PlayerDetailPage } from './pages/PlayerDetailPage';
@@ -18,6 +19,7 @@ function App() {
           <Route path="/players" element={<Players />} />
           <Route path="/schedule" element={<Schedule />} />
           <Route path="/stats" element={<Stats />} />
+          <Route path="/training" element={<Training />} />
           <Route path="/stats/player/:playerId" element={<PlayerDetailPage />} />
           <Route path="/game/:gameId/setup" element={<GameSetupPage />} />
           <Route path="/game/:gameId" element={<GameDayPage />} />
