@@ -1,20 +1,72 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { usePlayers } from '@/hooks/usePlayers';
 import { useGames } from '@/hooks/useGames';
-import { exportData } from '@/utils/export';
+import { exportData, importData } from '@/utils/export';
 
 export function Home() {
-  const { players } = usePlayers();
-  const { games } = useGames();
+  const { players, refresh: refreshPlayers } = usePlayers();
+  const { games, refresh: refreshGames } = useGames();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
 
   const upcomingGames = games.filter(g => g.status === 'scheduled').slice(0, 3);
   const inProgressGame = games.find(g => g.status === 'in-progress');
 
   const handleExport = () => {
     exportData();
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Confirm before importing (will overwrite existing data)
+    if (players.length > 0 || games.length > 0) {
+      const confirmed = confirm(
+        'Importing will replace all current data. Are you sure you want to continue?\n\n' +
+        'Tip: Export your current data first as a backup!'
+      );
+      if (!confirmed) {
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        return;
+      }
+    }
+
+    try {
+      await importData(file);
+      refreshPlayers();
+      refreshGames();
+      alert('Data imported successfully! 🎉');
+
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+
+      // Refresh the page to show new data
+      navigate('/');
+    } catch (error) {
+      console.error('Import error:', error);
+      alert(
+        'Failed to import data. Please make sure you selected a valid export file.\n\n' +
+        'Error: ' + (error instanceof Error ? error.message : 'Unknown error')
+      );
+
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   return (
@@ -105,9 +157,27 @@ export function Home() {
       {/* Data Management */}
       <Card>
         <h3 className="font-semibold mb-3">Data Management</h3>
-        <Button variant="secondary" onClick={handleExport} className="w-full">
-          Export Data
-        </Button>
+        <p className="text-sm text-gray-600 mb-3">
+          Share team data with your co-coach or backup to another device
+        </p>
+        <div className="space-y-3">
+          <Button variant="secondary" onClick={handleExport} className="w-full">
+            📤 Export Data
+          </Button>
+          <Button variant="secondary" onClick={handleImportClick} className="w-full">
+            📥 Import Data
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json,application/json"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+        </div>
+        <p className="text-xs text-gray-500 mt-3">
+          💡 Tip: Export before importing to keep a backup of your current data
+        </p>
       </Card>
 
       {/* Getting Started */}
