@@ -113,14 +113,26 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
     const rotations = game.rotations.filter(
       r => r.quarter === quarter && r.swap === swap && r.playersOnCourt.includes(playerId)
     );
-    return rotations.reduce((sum, r) => sum + r.minutes, 0);
+    return rotations.reduce((sum, r) => {
+      // Use NEW playerMinutes if available, fallback to OLD minutes
+      if (r.playerMinutes && r.playerMinutes[playerId] !== undefined) {
+        return sum + r.playerMinutes[playerId];
+      }
+      return sum + r.minutes;
+    }, 0);
   };
 
   // Get total minutes for a player
   const getTotalMinutes = (playerId: string): number => {
     return game.rotations
       .filter(r => r.playersOnCourt.includes(playerId))
-      .reduce((sum, r) => sum + r.minutes, 0);
+      .reduce((sum, r) => {
+        // Use NEW playerMinutes if available, fallback to OLD minutes
+        if (r.playerMinutes && r.playerMinutes[playerId] !== undefined) {
+          return sum + r.playerMinutes[playerId];
+        }
+        return sum + r.minutes;
+      }, 0);
   };
 
   // Count swaps attended (out of 8)
@@ -144,12 +156,13 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
     const existingRotations = getRotationsForSwap(quarter, swap);
 
     if (existingRotations.length === 0) {
-      // Create new rotation
+      // Create new rotation with playerMinutes
       const newRotation: Rotation = {
         quarter,
         swap,
         playersOnCourt: [playerId],
-        minutes: 4,
+        minutes: 4, // DEPRECATED: kept for backward compatibility
+        playerMinutes: { [playerId]: 4 }, // NEW: per-player minutes
       };
       GameService.addRotation(game.id, newRotation);
     } else {
@@ -181,12 +194,6 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
         }
       }
     });
-    onRefresh();
-  };
-
-  // Handle updating minutes for a swap
-  const handleUpdateSwapMinutes = (quarter: Quarter, swap: SwapNumber, minutes: number) => {
-    GameService.updateRotation(game.id, quarter, swap, { minutes: Math.max(0, Math.min(8, minutes)) });
     onRefresh();
   };
 
@@ -243,7 +250,7 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
       <Card className="p-2 sm:p-4">
         <h3 className="font-semibold text-lg mb-2">Quarter & Swap Overview</h3>
         <p className="text-xs text-gray-600 mb-3">
-          Tap a player to edit stats. {showRotationEditor ? 'Click cells to edit custom minutes (0-8). Supports >5 players for injury scenarios.' : 'Minutes shown per swap.'}
+          Tap a player to edit stats. {showRotationEditor ? 'Click cells to edit individual player minutes (0-8). Enter to save, Escape to cancel. Set to 0 to remove from rotation.' : 'Minutes shown per swap. Click "Edit Rotations" to modify.'}
         </p>
 
         {/* Scrollable table container */}
@@ -351,29 +358,38 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
                               type="number"
                               min={0}
                               max={8}
-                              step={0.5}
-                              defaultValue={mins}
+                              step={1}
+                              defaultValue={mins > 0 ? mins : ''}
+                              placeholder="0"
                               autoFocus
                               className="w-full text-center border rounded px-1"
                               style={{ maxWidth: '40px' }}
                               onBlur={(e) => {
-                                const newMinutes = parseFloat(e.target.value) || 0;
-                                handleUpdatePlayerMinutes(
-                                  player.id,
-                                  quarter,
-                                  swap,
-                                  Math.max(0, Math.min(8, newMinutes))
-                                );
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  const newMinutes = parseFloat((e.target as HTMLInputElement).value) || 0;
+                                const value = e.target.value.trim();
+                                const newMinutes = value === '' ? 0 : parseInt(value);
+                                if (!isNaN(newMinutes)) {
                                   handleUpdatePlayerMinutes(
                                     player.id,
                                     quarter,
                                     swap,
                                     Math.max(0, Math.min(8, newMinutes))
                                   );
+                                } else {
+                                  setEditingCell(null);
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  const value = (e.target as HTMLInputElement).value.trim();
+                                  const newMinutes = value === '' ? 0 : parseInt(value);
+                                  if (!isNaN(newMinutes)) {
+                                    handleUpdatePlayerMinutes(
+                                      player.id,
+                                      quarter,
+                                      swap,
+                                      Math.max(0, Math.min(8, newMinutes))
+                                    );
+                                  }
                                 } else if (e.key === 'Escape') {
                                   setEditingCell(null);
                                 }
@@ -409,40 +425,6 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
           </p>
         )}
       </Card>
-
-      {/* Minutes Editor for each swap */}
-      {showRotationEditor && (
-        <Card className="p-3">
-          <h4 className="font-semibold mb-3">Adjust Swap Minutes</h4>
-          <div className="grid grid-cols-4 gap-2">
-            {quarterSwaps.map(({ quarter, swap }) => {
-              const rotations = getRotationsForSwap(quarter, swap);
-              const currentMinutes = rotations.length > 0 ? rotations[0].minutes : 4;
-
-              return (
-                <div key={`mins-q${quarter}-s${swap}`} className="text-center">
-                  <div className="text-xs font-medium mb-1">Q{quarter}S{swap}</div>
-                  <div className="flex items-center justify-center gap-1">
-                    <button
-                      className="w-6 h-6 bg-gray-200 rounded text-sm font-bold"
-                      onClick={() => handleUpdateSwapMinutes(quarter, swap, currentMinutes - 1)}
-                    >
-                      -
-                    </button>
-                    <span className="w-6 text-center text-sm">{currentMinutes}</span>
-                    <button
-                      className="w-6 h-6 bg-gray-200 rounded text-sm font-bold"
-                      onClick={() => handleUpdateSwapMinutes(quarter, swap, currentMinutes + 1)}
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      )}
 
       {/* Attendance Modal */}
       {showAttendanceModal && (

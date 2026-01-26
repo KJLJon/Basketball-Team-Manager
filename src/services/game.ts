@@ -428,4 +428,33 @@ export class GameService {
       attendance
     });
   }
+
+  /**
+   * Migrate all games from old minutes format to new playerMinutes format.
+   * This converts rotation.minutes to rotation.playerMinutes for each player.
+   */
+  static migrateToPlayerMinutes(): void {
+    const games = StorageService.getGames();
+    let migrationNeeded = false;
+
+    games.forEach(game => {
+      game.rotations.forEach(rotation => {
+        // Check if this rotation needs migration (has minutes but no playerMinutes)
+        if (rotation.minutes !== undefined && !rotation.playerMinutes) {
+          migrationNeeded = true;
+
+          // Create playerMinutes mapping
+          rotation.playerMinutes = {};
+          rotation.playersOnCourt.forEach(playerId => {
+            rotation.playerMinutes![playerId] = rotation.minutes;
+          });
+        }
+      });
+    });
+
+    if (migrationNeeded) {
+      StorageService.saveGames(games);
+      console.log('Migrated games from old minutes format to playerMinutes format');
+    }
+  }
 }

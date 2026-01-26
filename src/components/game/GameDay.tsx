@@ -8,6 +8,7 @@ import { RotationHistory } from './RotationHistory';
 import { CurrentPlayerCard } from './CurrentPlayerCard';
 import { EditableStatRow } from './EditableStatRow';
 import { SwapsOverview } from './SwapsOverview';
+import { FullSchedule } from './FullSchedule';
 import { GameService } from '@/services/game';
 import { StatsService } from '@/services/stats';
 import { RotationService } from '@/services/rotation';
@@ -21,7 +22,7 @@ interface GameDayProps {
 export function GameDay({ game, players, onRefresh }: GameDayProps) {
   const navigate = useNavigate();
   const isCompleted = game.status === 'completed';
-  const [currentView, setCurrentView] = useState<'rotation' | 'current' | 'stats' | 'swaps'>(
+  const [currentView, setCurrentView] = useState<'rotation' | 'current' | 'stats' | 'swaps' | 'schedule'>(
     isCompleted ? 'stats' : 'rotation'
   );
   const [sortBy, setSortBy] = useState<'name' | 'number'>('name');
@@ -209,6 +210,16 @@ export function GameDay({ game, players, onRefresh }: GameDayProps) {
         >
           Swaps
         </button>
+        <button
+          className={`flex-1 py-3 font-medium text-sm ${
+            currentView === 'schedule'
+              ? 'border-b-2 border-blue-600 text-blue-600'
+              : 'text-gray-600'
+          }`}
+          onClick={() => setCurrentView('schedule')}
+        >
+          Schedule
+        </button>
       </div>
 
       {/* Content */}
@@ -291,6 +302,13 @@ export function GameDay({ game, players, onRefresh }: GameDayProps) {
             players={attendingPlayers}
             allPlayers={players}
             onRefresh={onRefresh}
+          />
+        )}
+
+        {currentView === 'schedule' && (
+          <FullSchedule
+            game={game}
+            players={attendingPlayers}
           />
         )}
 
