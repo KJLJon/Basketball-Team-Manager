@@ -27,9 +27,15 @@ export function GameDay({ game, players, onRefresh }: GameDayProps) {
   const [sortBy, setSortBy] = useState<'name' | 'number'>('name');
 
   const attendingPlayers = players.filter(p => game.attendance.includes(p.id));
-  const currentRotation = game.rotations.find(
+
+  // Get LATEST rotation for current quarter/swap (handles multiple swaps)
+  const currentRotations = game.rotations.filter(
     r => r.quarter === game.currentQuarter && r.swap === game.currentSwap
   );
+  const currentRotation = currentRotations.length > 0
+    ? currentRotations[currentRotations.length - 1]
+    : undefined;
+
   const playersOnCourt = currentRotation?.playersOnCourt || [];
 
   const benchPlayers = attendingPlayers.filter(p => !playersOnCourt.includes(p.id));
@@ -269,6 +275,7 @@ export function GameDay({ game, players, onRefresh }: GameDayProps) {
                         playersOnCourt={playersOnCourt}
                         onIncrementStat={(stat) => handleIncrementStat(player.id, stat)}
                         onSwapPlayer={(benchPlayerId) => handleSwapPlayer(player.id, benchPlayerId)}
+                        onUpdate={onRefresh}
                       />
                     );
                   })}

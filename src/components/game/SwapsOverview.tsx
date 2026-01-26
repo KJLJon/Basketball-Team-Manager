@@ -18,6 +18,13 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
   const [showRotationEditor, setShowRotationEditor] = useState(false);
   const [editingRotation, setEditingRotation] = useState<{ quarter: Quarter; swap: SwapNumber } | null>(null);
+  const [editingCell, setEditingCell] = useState<{
+    playerId: string;
+    quarter: Quarter;
+    swap: SwapNumber;
+    currentMinutes: number;
+  } | null>(null);
+  const [editingSwapsAttended, setEditingSwapsAttended] = useState<Record<string, number>>({});
 
   const handleIncrementStat = (playerId: string, stat: string) => {
     StatsService.incrementStat(game.id, playerId, stat as any);
@@ -45,6 +52,36 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
     }
     GameService.setAttendance(game.id, currentAttendance);
     onRefresh();
+  };
+
+  const handleSwapsAttendedChange = (playerId: string, swaps: number) => {
+    setEditingSwapsAttended(prev => ({
+      ...prev,
+      [playerId]: swaps
+    }));
+  };
+
+  const handleSaveAttendanceChanges = () => {
+    // Update swaps attended for all modified players
+    Object.entries(editingSwapsAttended).forEach(([playerId, swaps]) => {
+      GameService.updatePlayerSwapsAttended(game.id, playerId, swaps);
+    });
+
+    // Reset editing state
+    setEditingSwapsAttended({});
+    setShowAttendanceModal(false);
+    onRefresh();
+  };
+
+  const handleOpenAttendanceModal = () => {
+    // Initialize editing state with current swaps attended values
+    const initialSwapsAttended: Record<string, number> = {};
+    allPlayersSorted.forEach(player => {
+      const playerStats = game.stats[player.id];
+      initialSwapsAttended[player.id] = playerStats?.swapsAttended ?? (game.attendance.includes(player.id) ? 8 : 0);
+    });
+    setEditingSwapsAttended(initialSwapsAttended);
+    setShowAttendanceModal(true);
   };
 
   // Get all quarter/swap combinations
@@ -153,6 +190,33 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
     onRefresh();
   };
 
+  // Handle updating custom minutes for a specific player in a rotation
+  const handleUpdatePlayerMinutes = (
+    playerId: string,
+    quarter: Quarter,
+    swap: SwapNumber,
+    minutes: number
+  ) => {
+    GameService.updatePlayerMinutesInRotation(game.id, quarter, swap, playerId, minutes);
+    setEditingCell(null);
+    onRefresh();
+  };
+
+  // Handle cell click for custom minutes editing
+  const handleCellClick = (
+    playerId: string,
+    quarter: Quarter,
+    swap: SwapNumber,
+    currentMinutes: number
+  ) => {
+    if (showRotationEditor) {
+      // Start editing this cell
+      setEditingCell({ playerId, quarter, swap, currentMinutes });
+    } else {
+      setSelectedPlayer(playerId);
+    }
+  };
+
   const selectedPlayerData = selectedPlayer ? players.find(p => p.id === selectedPlayer) : null;
   const selectedPlayerStats = selectedPlayer ? StatsService.getPlayerGameStats(game.id, selectedPlayer) : null;
 
@@ -163,7 +227,7 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
         <Button
           size="sm"
           variant="secondary"
-          onClick={() => setShowAttendanceModal(true)}
+          onClick={handleOpenAttendanceModal}
         >
           Edit Attendance
         </Button>
@@ -179,7 +243,7 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
       <Card className="p-2 sm:p-4">
         <h3 className="font-semibold text-lg mb-2">Quarter & Swap Overview</h3>
         <p className="text-xs text-gray-600 mb-3">
-          Tap a player to edit stats. {showRotationEditor ? 'Click cells to toggle player in/out of swap.' : 'Minutes shown per swap.'}
+          Tap a player to edit stats. {showRotationEditor ? 'Click cells to edit custom minutes (0-8). Supports >5 players for injury scenarios.' : 'Minutes shown per swap.'}
         </p>
 
         {/* Scrollable table container */}
@@ -268,6 +332,9 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
                     {quarterSwaps.map(({ quarter, swap }) => {
                       const mins = getPlayerMinutes(player.id, quarter, swap);
                       const isInSwap = mins > 0;
+                      const isEditing = editingCell?.playerId === player.id &&
+                                       editingCell?.quarter === quarter &&
+                                       editingCell?.swap === swap;
 
                       return (
                         <td
@@ -277,19 +344,45 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
                           } ${
                             isInSwap ? 'bg-green-50 text-green-800 font-medium' : 'text-gray-300'
                           }`}
-                          onClick={() => {
-                            if (showRotationEditor) {
-                              if (isInSwap) {
-                                handleRemovePlayerFromSwap(player.id, quarter, swap);
-                              } else {
-                                handleAddPlayerToSwap(player.id, quarter, swap);
-                              }
-                            } else {
-                              setSelectedPlayer(player.id);
-                            }
-                          }}
+                          onClick={() => handleCellClick(player.id, quarter, swap, mins)}
                         >
-                          {isInSwap ? `${mins}m` : (showRotationEditor ? '+' : '-')}
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              min={0}
+                              max={8}
+                              step={0.5}
+                              defaultValue={mins}
+                              autoFocus
+                              className="w-full text-center border rounded px-1"
+                              style={{ maxWidth: '40px' }}
+                              onBlur={(e) => {
+                                const newMinutes = parseFloat(e.target.value) || 0;
+                                handleUpdatePlayerMinutes(
+                                  player.id,
+                                  quarter,
+                                  swap,
+                                  Math.max(0, Math.min(8, newMinutes))
+                                );
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  const newMinutes = parseFloat((e.target as HTMLInputElement).value) || 0;
+                                  handleUpdatePlayerMinutes(
+                                    player.id,
+                                    quarter,
+                                    swap,
+                                    Math.max(0, Math.min(8, newMinutes))
+                                  );
+                                } else if (e.key === 'Escape') {
+                                  setEditingCell(null);
+                                }
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : (
+                            isInSwap ? `${mins}m` : (showRotationEditor ? '+' : '-')
+                          )}
                         </td>
                       );
                     })}
@@ -367,61 +460,103 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
               </button>
             </div>
             <p className="text-sm text-gray-600 mb-4">
-              Toggle players to mark them as attending or not attending this game.
+              Edit swaps attended (0-8) for each player. This is separate from minutes played.
             </p>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {allPlayersSorted.map((player) => {
-                const isAttending = game.attendance.includes(player.id);
+                const swapsAttended = editingSwapsAttended[player.id] ?? 0;
+                const minutesPlayed = getTotalMinutes(player.id);
                 const swapsPlayed = getSwapsAttended(player.id);
 
+                // Validation warnings
+                const hasInconsistency = (swapsAttended > 0 && minutesPlayed === 0) ||
+                                        (swapsAttended === 0 && minutesPlayed > 0);
+                const maxMinutes = swapsAttended * 4; // Max possible minutes based on swaps
+                const hasExcessMinutes = minutesPlayed > maxMinutes && swapsAttended > 0;
+
                 return (
-                  <button
+                  <div
                     key={player.id}
-                    type="button"
-                    onClick={() => handleToggleAttendance(player.id)}
-                    className={`w-full p-3 rounded-lg border-2 text-left transition-all ${
-                      isAttending
-                        ? 'border-green-500 bg-green-50'
-                        : 'border-gray-200 bg-white hover:border-gray-300'
-                    }`}
+                    className="p-3 rounded-lg border-2 border-gray-200 bg-white"
                   >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                          isAttending
-                            ? 'border-green-500 bg-green-500'
-                            : 'border-gray-300'
-                        }`}
-                      >
-                        {isAttending && (
-                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path
-                              fillRule="evenodd"
-                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        )}
-                      </div>
+                    <div className="flex items-start gap-3">
                       <div className="flex-1">
-                        <div className="font-semibold">#{player.number} {player.name}</div>
-                        {isAttending && swapsPlayed > 0 && (
-                          <div className="text-xs text-gray-500">
-                            {swapsPlayed}/8 swaps played
+                        <div className="font-semibold mb-2">#{player.number} {player.name}</div>
+
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="flex-1">
+                            <label className="text-xs text-gray-600 block mb-1">
+                              Swaps Attended:
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={8}
+                              value={swapsAttended}
+                              onChange={(e) => handleSwapsAttendedChange(
+                                player.id,
+                                Math.max(0, Math.min(8, parseInt(e.target.value) || 0))
+                              )}
+                              className="w-20 px-2 py-1 border rounded text-sm"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <span className="text-xs text-gray-500 ml-2">/ 8</span>
+                          </div>
+
+                          <div className="text-sm text-gray-600">
+                            <div className="text-xs text-gray-500 mb-1">Minutes Played:</div>
+                            <div className="font-medium">{minutesPlayed} min</div>
+                          </div>
+                        </div>
+
+                        {/* Warning indicators */}
+                        {swapsAttended > 0 && minutesPlayed === 0 && (
+                          <div className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                            ⚠️ Present but didn't play
+                          </div>
+                        )}
+
+                        {swapsAttended === 0 && minutesPlayed > 0 && (
+                          <div className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                            ⚠️ Played but marked absent
+                          </div>
+                        )}
+
+                        {hasExcessMinutes && (
+                          <div className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                            ⚠️ {minutesPlayed} min exceeds {maxMinutes} max for {swapsAttended} swaps
+                          </div>
+                        )}
+
+                        {swapsAttended > 0 && !hasInconsistency && !hasExcessMinutes && (
+                          <div className="text-xs text-green-600">
+                            ✓ Valid ({swapsPlayed} swaps played)
                           </div>
                         )}
                       </div>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
-            <Button
-              onClick={() => setShowAttendanceModal(false)}
-              className="w-full mt-4"
-            >
-              Done
-            </Button>
+            <div className="flex gap-2 mt-4">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setEditingSwapsAttended({});
+                  setShowAttendanceModal(false);
+                }}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveAttendanceChanges}
+                className="flex-1"
+              >
+                Save Changes
+              </Button>
+            </div>
           </div>
         </div>
       )}

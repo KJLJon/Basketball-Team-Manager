@@ -63,7 +63,12 @@ export class StatsService {
     let totalMinutes = 0;
     for (const rotation of game.rotations) {
       if (rotation.playersOnCourt.includes(playerId)) {
-        totalMinutes += rotation.minutes;
+        // Use playerMinutes if available (custom minutes), otherwise use rotation.minutes
+        if (rotation.playerMinutes && rotation.playerMinutes[playerId] !== undefined) {
+          totalMinutes += rotation.playerMinutes[playerId];
+        } else {
+          totalMinutes += rotation.minutes;
+        }
       }
     }
 
@@ -95,6 +100,7 @@ export class StatsService {
 
     let gamesPlayed = 0;
     let gamesAttended = 0;
+    let effectiveGamesAttended = 0; // Accounts for partial attendance
     let totalPlayTime = 0;
     let totalStats = {
       steals: 0,
@@ -111,13 +117,17 @@ export class StatsService {
       if (game.attendance.includes(playerId)) {
         gamesAttended++;
 
+        // Calculate effective attendance based on swaps attended (X/8 swaps = X/8 of a game)
+        const stats = game.stats[playerId];
+        const swapsAttended = stats?.swapsAttended ?? 8; // Default to 8 if not set (full attendance)
+        effectiveGamesAttended += swapsAttended / 8;
+
         const playTime = this.calculatePlayTime(game.id, playerId);
         if (playTime > 0) {
           gamesPlayed++;
         }
         totalPlayTime += playTime;
 
-        const stats = game.stats[playerId];
         if (stats) {
           totalStats.steals += stats.steals;
           totalStats.rebounds += stats.rebounds;
@@ -140,7 +150,8 @@ export class StatsService {
       totalStats.made2pt * 2 +
       totalStats.made3pt * 3;
 
-    const normalizedPlayTime = gamesAttended > 0 ? totalPlayTime / gamesAttended : 0;
+    // Use effectiveGamesAttended for normalized play time to account for partial attendance
+    const normalizedPlayTime = effectiveGamesAttended > 0 ? totalPlayTime / effectiveGamesAttended : 0;
 
     return {
       playerId,
