@@ -24,6 +24,7 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
     swap: SwapNumber;
     currentMinutes: number;
   } | null>(null);
+  const [editingSwapsAttended, setEditingSwapsAttended] = useState<Record<string, number>>({});
 
   const handleIncrementStat = (playerId: string, stat: string) => {
     StatsService.incrementStat(game.id, playerId, stat as any);
@@ -51,6 +52,36 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
     }
     GameService.setAttendance(game.id, currentAttendance);
     onRefresh();
+  };
+
+  const handleSwapsAttendedChange = (playerId: string, swaps: number) => {
+    setEditingSwapsAttended(prev => ({
+      ...prev,
+      [playerId]: swaps
+    }));
+  };
+
+  const handleSaveAttendanceChanges = () => {
+    // Update swaps attended for all modified players
+    Object.entries(editingSwapsAttended).forEach(([playerId, swaps]) => {
+      GameService.updatePlayerSwapsAttended(game.id, playerId, swaps);
+    });
+
+    // Reset editing state
+    setEditingSwapsAttended({});
+    setShowAttendanceModal(false);
+    onRefresh();
+  };
+
+  const handleOpenAttendanceModal = () => {
+    // Initialize editing state with current swaps attended values
+    const initialSwapsAttended: Record<string, number> = {};
+    allPlayersSorted.forEach(player => {
+      const playerStats = game.stats[player.id];
+      initialSwapsAttended[player.id] = playerStats?.swapsAttended ?? (game.attendance.includes(player.id) ? 8 : 0);
+    });
+    setEditingSwapsAttended(initialSwapsAttended);
+    setShowAttendanceModal(true);
   };
 
   // Get all quarter/swap combinations
@@ -196,7 +227,7 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
         <Button
           size="sm"
           variant="secondary"
-          onClick={() => setShowAttendanceModal(true)}
+          onClick={handleOpenAttendanceModal}
         >
           Edit Attendance
         </Button>
@@ -429,61 +460,103 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
               </button>
             </div>
             <p className="text-sm text-gray-600 mb-4">
-              Toggle players to mark them as attending or not attending this game.
+              Edit swaps attended (0-8) for each player. This is separate from minutes played.
             </p>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {allPlayersSorted.map((player) => {
-                const isAttending = game.attendance.includes(player.id);
+                const swapsAttended = editingSwapsAttended[player.id] ?? 0;
+                const minutesPlayed = getTotalMinutes(player.id);
                 const swapsPlayed = getSwapsAttended(player.id);
 
+                // Validation warnings
+                const hasInconsistency = (swapsAttended > 0 && minutesPlayed === 0) ||
+                                        (swapsAttended === 0 && minutesPlayed > 0);
+                const maxMinutes = swapsAttended * 4; // Max possible minutes based on swaps
+                const hasExcessMinutes = minutesPlayed > maxMinutes && swapsAttended > 0;
+
                 return (
-                  <button
+                  <div
                     key={player.id}
-                    type="button"
-                    onClick={() => handleToggleAttendance(player.id)}
-                    className={`w-full p-3 rounded-lg border-2 text-left transition-all ${
-                      isAttending
-                        ? 'border-green-500 bg-green-50'
-                        : 'border-gray-200 bg-white hover:border-gray-300'
-                    }`}
+                    className="p-3 rounded-lg border-2 border-gray-200 bg-white"
                   >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                          isAttending
-                            ? 'border-green-500 bg-green-500'
-                            : 'border-gray-300'
-                        }`}
-                      >
-                        {isAttending && (
-                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path
-                              fillRule="evenodd"
-                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        )}
-                      </div>
+                    <div className="flex items-start gap-3">
                       <div className="flex-1">
-                        <div className="font-semibold">#{player.number} {player.name}</div>
-                        {isAttending && swapsPlayed > 0 && (
-                          <div className="text-xs text-gray-500">
-                            {swapsPlayed}/8 swaps played
+                        <div className="font-semibold mb-2">#{player.number} {player.name}</div>
+
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="flex-1">
+                            <label className="text-xs text-gray-600 block mb-1">
+                              Swaps Attended:
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={8}
+                              value={swapsAttended}
+                              onChange={(e) => handleSwapsAttendedChange(
+                                player.id,
+                                Math.max(0, Math.min(8, parseInt(e.target.value) || 0))
+                              )}
+                              className="w-20 px-2 py-1 border rounded text-sm"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <span className="text-xs text-gray-500 ml-2">/ 8</span>
+                          </div>
+
+                          <div className="text-sm text-gray-600">
+                            <div className="text-xs text-gray-500 mb-1">Minutes Played:</div>
+                            <div className="font-medium">{minutesPlayed} min</div>
+                          </div>
+                        </div>
+
+                        {/* Warning indicators */}
+                        {swapsAttended > 0 && minutesPlayed === 0 && (
+                          <div className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                            ⚠️ Present but didn't play
+                          </div>
+                        )}
+
+                        {swapsAttended === 0 && minutesPlayed > 0 && (
+                          <div className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                            ⚠️ Played but marked absent
+                          </div>
+                        )}
+
+                        {hasExcessMinutes && (
+                          <div className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                            ⚠️ {minutesPlayed} min exceeds {maxMinutes} max for {swapsAttended} swaps
+                          </div>
+                        )}
+
+                        {swapsAttended > 0 && !hasInconsistency && !hasExcessMinutes && (
+                          <div className="text-xs text-green-600">
+                            ✓ Valid ({swapsPlayed} swaps played)
                           </div>
                         )}
                       </div>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
-            <Button
-              onClick={() => setShowAttendanceModal(false)}
-              className="w-full mt-4"
-            >
-              Done
-            </Button>
+            <div className="flex gap-2 mt-4">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setEditingSwapsAttended({});
+                  setShowAttendanceModal(false);
+                }}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveAttendanceChanges}
+                className="flex-1"
+              >
+                Save Changes
+              </Button>
+            </div>
           </div>
         </div>
       )}
