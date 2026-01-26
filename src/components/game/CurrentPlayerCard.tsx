@@ -31,7 +31,7 @@ export function CurrentPlayerCard({
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Get recommendations for the swap (excluding current players on court)
-  const recommendations = RotationService.recommendPlayers(
+  const recommendations = RotationService.getRecommendations(
     gameId,
     Math.min(3, benchPlayers.length),
     playersOnCourt

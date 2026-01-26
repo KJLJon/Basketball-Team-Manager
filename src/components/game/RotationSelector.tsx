@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import type { Game, Player, Rotation } from '@/types';
+import type { Game, Player, Rotation, RotationAlgorithm } from '@/types';
 import { Button } from '../common/Button';
 import { Card } from '../common/Card';
 import { GameService } from '@/services/game';
 import { RotationService } from '@/services/rotation';
 import { StatsService } from '@/services/stats';
+import { StorageService } from '@/services/storage';
 
 interface RotationSelectorProps {
   game: Game;
@@ -17,6 +18,18 @@ interface RotationSelectorProps {
 export function RotationSelector({ game, players, onRefresh, onNextSwap, onRotationSaved }: RotationSelectorProps) {
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
   const [showRecommendations, setShowRecommendations] = useState(false);
+  const [algorithm, setAlgorithm] = useState<RotationAlgorithm>(StorageService.getRotationAlgorithm());
+
+  const toggleAlgorithm = () => {
+    const newAlgorithm: RotationAlgorithm = algorithm === 'simple' ? 'weighted' : 'simple';
+    setAlgorithm(newAlgorithm);
+    StorageService.setRotationAlgorithm(newAlgorithm);
+    // Force re-render of recommendations
+    if (showRecommendations) {
+      setShowRecommendations(false);
+      setTimeout(() => setShowRecommendations(true), 0);
+    }
+  };
 
   const currentRotation = game.rotations.find(
     r => r.quarter === game.currentQuarter && r.swap === game.currentSwap
@@ -67,7 +80,7 @@ export function RotationSelector({ game, players, onRefresh, onNextSwap, onRotat
   };
 
   const handleApplyRecommendations = () => {
-    const recommendations = RotationService.recommendPlayers(game.id, 5);
+    const recommendations = RotationService.getRecommendations(game.id, 5);
     setSelectedPlayers(recommendations.map(r => r.playerId));
     setShowRecommendations(false);
   };
@@ -76,7 +89,7 @@ export function RotationSelector({ game, players, onRefresh, onNextSwap, onRotat
     return StatsService.getPlayerSeasonStats(playerId);
   };
 
-  const recommendations = RotationService.recommendPlayers(
+  const recommendations = RotationService.getRecommendations(
     game.id,
     Math.min(5, players.length),
     selectedPlayers
@@ -99,6 +112,21 @@ export function RotationSelector({ game, players, onRefresh, onNextSwap, onRotat
               </div>
             </div>
           </Card>
+
+          {/* Algorithm Toggle */}
+          <div className="flex items-center justify-between mb-3 p-2 bg-gray-50 rounded-lg border border-gray-200">
+            <span className="text-sm font-medium text-gray-700">Algorithm:</span>
+            <button
+              onClick={toggleAlgorithm}
+              className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                algorithm === 'simple'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-purple-600 text-white'
+              }`}
+            >
+              {algorithm === 'simple' ? 'Simple (Fair)' : 'Weighted (Advanced)'}
+            </button>
+          </div>
 
           {recommendations.length > 0 && (
             <Card>
