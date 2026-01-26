@@ -63,7 +63,12 @@ export class StatsService {
     let totalMinutes = 0;
     for (const rotation of game.rotations) {
       if (rotation.playersOnCourt.includes(playerId)) {
-        totalMinutes += rotation.minutes;
+        // Use playerMinutes if available (custom minutes), otherwise use rotation.minutes
+        if (rotation.playerMinutes && rotation.playerMinutes[playerId] !== undefined) {
+          totalMinutes += rotation.playerMinutes[playerId];
+        } else {
+          totalMinutes += rotation.minutes;
+        }
       }
     }
 

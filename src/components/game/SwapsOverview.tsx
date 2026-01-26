@@ -18,6 +18,12 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
   const [showRotationEditor, setShowRotationEditor] = useState(false);
   const [editingRotation, setEditingRotation] = useState<{ quarter: Quarter; swap: SwapNumber } | null>(null);
+  const [editingCell, setEditingCell] = useState<{
+    playerId: string;
+    quarter: Quarter;
+    swap: SwapNumber;
+    currentMinutes: number;
+  } | null>(null);
 
   const handleIncrementStat = (playerId: string, stat: string) => {
     StatsService.incrementStat(game.id, playerId, stat as any);
@@ -153,6 +159,33 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
     onRefresh();
   };
 
+  // Handle updating custom minutes for a specific player in a rotation
+  const handleUpdatePlayerMinutes = (
+    playerId: string,
+    quarter: Quarter,
+    swap: SwapNumber,
+    minutes: number
+  ) => {
+    GameService.updatePlayerMinutesInRotation(game.id, quarter, swap, playerId, minutes);
+    setEditingCell(null);
+    onRefresh();
+  };
+
+  // Handle cell click for custom minutes editing
+  const handleCellClick = (
+    playerId: string,
+    quarter: Quarter,
+    swap: SwapNumber,
+    currentMinutes: number
+  ) => {
+    if (showRotationEditor) {
+      // Start editing this cell
+      setEditingCell({ playerId, quarter, swap, currentMinutes });
+    } else {
+      setSelectedPlayer(playerId);
+    }
+  };
+
   const selectedPlayerData = selectedPlayer ? players.find(p => p.id === selectedPlayer) : null;
   const selectedPlayerStats = selectedPlayer ? StatsService.getPlayerGameStats(game.id, selectedPlayer) : null;
 
@@ -179,7 +212,7 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
       <Card className="p-2 sm:p-4">
         <h3 className="font-semibold text-lg mb-2">Quarter & Swap Overview</h3>
         <p className="text-xs text-gray-600 mb-3">
-          Tap a player to edit stats. {showRotationEditor ? 'Click cells to toggle player in/out of swap.' : 'Minutes shown per swap.'}
+          Tap a player to edit stats. {showRotationEditor ? 'Click cells to edit custom minutes (0-8). Supports >5 players for injury scenarios.' : 'Minutes shown per swap.'}
         </p>
 
         {/* Scrollable table container */}
@@ -268,6 +301,9 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
                     {quarterSwaps.map(({ quarter, swap }) => {
                       const mins = getPlayerMinutes(player.id, quarter, swap);
                       const isInSwap = mins > 0;
+                      const isEditing = editingCell?.playerId === player.id &&
+                                       editingCell?.quarter === quarter &&
+                                       editingCell?.swap === swap;
 
                       return (
                         <td
@@ -277,19 +313,45 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
                           } ${
                             isInSwap ? 'bg-green-50 text-green-800 font-medium' : 'text-gray-300'
                           }`}
-                          onClick={() => {
-                            if (showRotationEditor) {
-                              if (isInSwap) {
-                                handleRemovePlayerFromSwap(player.id, quarter, swap);
-                              } else {
-                                handleAddPlayerToSwap(player.id, quarter, swap);
-                              }
-                            } else {
-                              setSelectedPlayer(player.id);
-                            }
-                          }}
+                          onClick={() => handleCellClick(player.id, quarter, swap, mins)}
                         >
-                          {isInSwap ? `${mins}m` : (showRotationEditor ? '+' : '-')}
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              min={0}
+                              max={8}
+                              step={0.5}
+                              defaultValue={mins}
+                              autoFocus
+                              className="w-full text-center border rounded px-1"
+                              style={{ maxWidth: '40px' }}
+                              onBlur={(e) => {
+                                const newMinutes = parseFloat(e.target.value) || 0;
+                                handleUpdatePlayerMinutes(
+                                  player.id,
+                                  quarter,
+                                  swap,
+                                  Math.max(0, Math.min(8, newMinutes))
+                                );
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  const newMinutes = parseFloat((e.target as HTMLInputElement).value) || 0;
+                                  handleUpdatePlayerMinutes(
+                                    player.id,
+                                    quarter,
+                                    swap,
+                                    Math.max(0, Math.min(8, newMinutes))
+                                  );
+                                } else if (e.key === 'Escape') {
+                                  setEditingCell(null);
+                                }
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : (
+                            isInSwap ? `${mins}m` : (showRotationEditor ? '+' : '-')
+                          )}
                         </td>
                       );
                     })}

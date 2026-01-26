@@ -292,6 +292,92 @@ export class GameService {
   }
 
   /**
+   * Update individual player minutes in a specific rotation.
+   * Supports custom minutes per player and >5 players for injury scenarios.
+   */
+  static updatePlayerMinutesInRotation(
+    gameId: string,
+    quarter: Quarter,
+    swap: SwapNumber,
+    playerId: string,
+    minutes: number
+  ): Game {
+    const game = this.getGameById(gameId);
+    if (!game) {
+      throw new Error('Game not found');
+    }
+
+    if (minutes < 0 || minutes > 8) {
+      throw new Error('Minutes must be between 0 and 8');
+    }
+
+    // Find rotations for this quarter/swap
+    const rotationIndices: number[] = [];
+    game.rotations.forEach((r, index) => {
+      if (r.quarter === quarter && r.swap === swap) {
+        rotationIndices.push(index);
+      }
+    });
+
+    const rotations = [...game.rotations];
+
+    if (rotationIndices.length === 0) {
+      // Create new rotation if none exists
+      const newRotation: Rotation = {
+        quarter,
+        swap,
+        playersOnCourt: [playerId],
+        minutes: 4, // DEPRECATED field
+        playerMinutes: { [playerId]: minutes },
+      };
+      rotations.push(newRotation);
+    } else {
+      // Find rotation containing this player, or use the first one
+      let targetIndex = rotationIndices[0];
+      for (const idx of rotationIndices) {
+        if (rotations[idx].playersOnCourt.includes(playerId)) {
+          targetIndex = idx;
+          break;
+        }
+      }
+
+      const rotation = rotations[targetIndex];
+
+      if (minutes === 0) {
+        // Remove player if minutes set to 0
+        rotation.playersOnCourt = rotation.playersOnCourt.filter(
+          id => id !== playerId
+        );
+        if (rotation.playerMinutes) {
+          delete rotation.playerMinutes[playerId];
+        }
+
+        // Remove rotation if no players left
+        if (rotation.playersOnCourt.length === 0) {
+          rotations.splice(targetIndex, 1);
+        }
+      } else {
+        // Add or update player
+        if (!rotation.playersOnCourt.includes(playerId)) {
+          rotation.playersOnCourt.push(playerId);
+        }
+
+        // Initialize playerMinutes if using old format
+        if (!rotation.playerMinutes) {
+          rotation.playerMinutes = {};
+          rotation.playersOnCourt.forEach(pid => {
+            rotation.playerMinutes![pid] = rotation.minutes || 4;
+          });
+        }
+
+        rotation.playerMinutes[playerId] = minutes;
+      }
+    }
+
+    return this.updateGame(gameId, { rotations });
+  }
+
+  /**
    * Update the number of swaps a player attended (0-8) for partial attendance tracking.
    * This is separate from play time minutes.
    */
