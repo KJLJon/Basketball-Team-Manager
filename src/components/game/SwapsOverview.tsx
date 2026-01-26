@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import type { Game, Player, Quarter, SwapNumber } from '@/types';
 import { Card } from '../common/Card';
-import { Button } from '../common/Button';
 import { EditableStatRow } from './EditableStatRow';
 import { StatsService } from '@/services/stats';
 
@@ -13,16 +12,6 @@ interface SwapsOverviewProps {
 
 export function SwapsOverview({ game, players, onRefresh }: SwapsOverviewProps) {
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
-
-  const getPlayerName = (playerId: string) => {
-    const player = players.find(p => p.id === playerId);
-    return player ? player.name : 'Unknown';
-  };
-
-  const getPlayerNumber = (playerId: string) => {
-    const player = players.find(p => p.id === playerId);
-    return player ? player.number : '?';
-  };
 
   const handleIncrementStat = (playerId: string, stat: string) => {
     StatsService.incrementStat(game.id, playerId, stat as any);
@@ -40,7 +29,7 @@ export function SwapsOverview({ game, players, onRefresh }: SwapsOverviewProps) 
     }
   };
 
-  // Get all unique quarter/swap combinations from rotations
+  // Get all quarter/swap combinations
   const quarterSwaps: Array<{ quarter: Quarter; swap: SwapNumber }> = [];
   for (let q = 1; q <= 4; q++) {
     for (let s = 1; s <= 2; s++) {
@@ -48,75 +37,144 @@ export function SwapsOverview({ game, players, onRefresh }: SwapsOverviewProps) 
     }
   }
 
+  // Get attending players for this game, sorted by number
+  const attendingPlayers = players
+    .filter(p => game.attendance.includes(p.id))
+    .sort((a, b) => {
+      const numA = parseInt(a.number) || 0;
+      const numB = parseInt(b.number) || 0;
+      return numA - numB;
+    });
+
+  // Helper to get minutes for a player in a specific quarter/swap
+  const getPlayerMinutes = (playerId: string, quarter: Quarter, swap: SwapNumber): number => {
+    const rotations = game.rotations.filter(
+      r => r.quarter === quarter && r.swap === swap && r.playersOnCourt.includes(playerId)
+    );
+    return rotations.reduce((sum, r) => sum + r.minutes, 0);
+  };
+
+  // Get total minutes for a player
+  const getTotalMinutes = (playerId: string): number => {
+    return game.rotations
+      .filter(r => r.playersOnCourt.includes(playerId))
+      .reduce((sum, r) => sum + r.minutes, 0);
+  };
+
   const selectedPlayerData = selectedPlayer ? players.find(p => p.id === selectedPlayer) : null;
   const selectedPlayerStats = selectedPlayer ? StatsService.getPlayerGameStats(game.id, selectedPlayer) : null;
 
   return (
     <div className="space-y-4 pb-24">
-      <Card>
+      <Card className="p-2 sm:p-4">
         <h3 className="font-semibold text-lg mb-2">Quarter & Swap Overview</h3>
-        <p className="text-sm text-gray-600 mb-4">
-          View all rotations for this game. Click on a player to see and edit their stats.
+        <p className="text-xs text-gray-600 mb-3">
+          Tap a player to edit stats. Minutes shown per swap.
         </p>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
+        {/* Scrollable table container */}
+        <div
+          className="overflow-auto border border-gray-300 rounded"
+          style={{ maxHeight: '60vh' }}
+        >
+          <table className="text-xs border-collapse" style={{ minWidth: 'max-content' }}>
             <thead>
-              <tr className="bg-gray-100">
-                <th className="border border-gray-300 px-2 py-2 text-left font-semibold">Quarter</th>
-                <th className="border border-gray-300 px-2 py-2 text-left font-semibold">Swap</th>
-                <th className="border border-gray-300 px-2 py-2 text-left font-semibold">Players on Court</th>
+              <tr>
+                {/* Corner cell - sticky both ways */}
+                <th
+                  className="bg-gray-200 border-r border-b border-gray-300 px-2 py-2 text-left font-semibold whitespace-nowrap"
+                  style={{
+                    position: 'sticky',
+                    left: 0,
+                    top: 0,
+                    zIndex: 20,
+                    minWidth: '80px'
+                  }}
+                >
+                  Player
+                </th>
+                {/* Quarter/Swap headers - sticky top */}
+                {quarterSwaps.map(({ quarter, swap }) => (
+                  <th
+                    key={`h-q${quarter}-s${swap}`}
+                    className="bg-gray-200 border-r border-b border-gray-300 px-2 py-2 text-center font-semibold whitespace-nowrap"
+                    style={{
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 10,
+                      minWidth: '44px'
+                    }}
+                  >
+                    <div className="text-xs">Q{quarter}</div>
+                    <div className="text-[10px] text-gray-600">S{swap}</div>
+                  </th>
+                ))}
+                {/* Total column header */}
+                <th
+                  className="bg-gray-300 border-b border-gray-400 px-2 py-2 text-center font-bold whitespace-nowrap"
+                  style={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 10,
+                    minWidth: '44px'
+                  }}
+                >
+                  <div className="text-xs">Tot</div>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {quarterSwaps.map(({ quarter, swap }) => {
-                const rotations = game.rotations.filter(
-                  r => r.quarter === quarter && r.swap === swap
-                );
-
-                // Get unique players from all rotations for this quarter/swap
-                const playersOnCourt = new Set<string>();
-                rotations.forEach(r => {
-                  r.playersOnCourt.forEach(pid => playersOnCourt.add(pid));
-                });
-
-                const hasRotation = playersOnCourt.size > 0;
+              {attendingPlayers.map((player) => {
+                const isSelected = selectedPlayer === player.id;
+                const totalMins = getTotalMinutes(player.id);
 
                 return (
-                  <tr key={`q${quarter}-s${swap}`} className={!hasRotation ? 'bg-gray-50' : ''}>
-                    <td className="border border-gray-300 px-2 py-2 font-medium">Q{quarter}</td>
-                    <td className="border border-gray-300 px-2 py-2 font-medium">Swap {swap}</td>
-                    <td className="border border-gray-300 px-2 py-2">
-                      {hasRotation ? (
-                        <div className="flex flex-wrap gap-1">
-                          {Array.from(playersOnCourt).map(playerId => {
-                            const player = players.find(p => p.id === playerId);
-                            if (!player) return null;
-
-                            const playTime = rotations
-                              .filter(r => r.playersOnCourt.includes(playerId))
-                              .reduce((sum, r) => sum + r.minutes, 0);
-
-                            return (
-                              <button
-                                key={playerId}
-                                onClick={() => setSelectedPlayer(playerId)}
-                                className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
-                                  selectedPlayer === playerId
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                                }`}
-                              >
-                                <span className="font-bold">#{player.number}</span>
-                                <span>{player.name}</span>
-                                <span className="text-xs opacity-75">({playTime}m)</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 italic">No rotation set</span>
-                      )}
+                  <tr
+                    key={player.id}
+                    className={isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}
+                  >
+                    {/* Player name cell - sticky left */}
+                    <td
+                      className={`border-r border-b border-gray-300 px-2 py-1.5 font-medium whitespace-nowrap cursor-pointer ${
+                        isSelected ? 'bg-blue-100' : 'bg-gray-100'
+                      }`}
+                      style={{
+                        position: 'sticky',
+                        left: 0,
+                        zIndex: 5
+                      }}
+                      onClick={() => setSelectedPlayer(player.id)}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span className="text-gray-500 text-[10px]">#{player.number}</span>
+                        <span className="truncate max-w-[60px]" title={player.name}>
+                          {player.name.split(' ')[0]}
+                        </span>
+                      </div>
+                    </td>
+                    {/* Minutes cells for each quarter/swap */}
+                    {quarterSwaps.map(({ quarter, swap }) => {
+                      const mins = getPlayerMinutes(player.id, quarter, swap);
+                      return (
+                        <td
+                          key={`${player.id}-q${quarter}-s${swap}`}
+                          className={`border-r border-b border-gray-300 px-1 py-1.5 text-center ${
+                            mins > 0 ? 'bg-green-50 text-green-800 font-medium' : 'text-gray-300'
+                          }`}
+                          onClick={() => setSelectedPlayer(player.id)}
+                        >
+                          {mins > 0 ? `${mins}m` : '-'}
+                        </td>
+                      );
+                    })}
+                    {/* Total minutes cell */}
+                    <td
+                      className={`border-b border-gray-400 px-1 py-1.5 text-center font-bold ${
+                        totalMins > 0 ? 'bg-blue-50 text-blue-800' : 'text-gray-400'
+                      }`}
+                      onClick={() => setSelectedPlayer(player.id)}
+                    >
+                      {totalMins > 0 ? `${totalMins}` : '0'}
                     </td>
                   </tr>
                 );
@@ -124,6 +182,12 @@ export function SwapsOverview({ game, players, onRefresh }: SwapsOverviewProps) 
             </tbody>
           </table>
         </div>
+
+        {attendingPlayers.length === 0 && (
+          <p className="text-center text-gray-500 py-4">
+            No players marked as attending this game.
+          </p>
+        )}
       </Card>
 
       {selectedPlayer && selectedPlayerData && selectedPlayerStats && (() => {
