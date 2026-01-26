@@ -1,4 +1,4 @@
-import type { Player, Game, AppData } from '@/types';
+import type { Player, Game, AppData, AppSettings, RotationAlgorithm } from '@/types';
 
 const STORAGE_KEY = 'basketball-team-manager';
 const CURRENT_VERSION = 1;
@@ -106,6 +106,29 @@ export class StorageService {
 
   static clear(): void {
     localStorage.removeItem(STORAGE_KEY);
+  }
+
+  static getSettings(): AppSettings {
+    const data = this.load();
+    return data.settings || {
+      rotationAlgorithm: 'simple', // Default to simple algorithm
+    };
+  }
+
+  static saveSettings(settings: AppSettings): void {
+    const data = this.load();
+    data.settings = settings;
+    this.save(data);
+  }
+
+  static getRotationAlgorithm(): RotationAlgorithm {
+    return this.getSettings().rotationAlgorithm;
+  }
+
+  static setRotationAlgorithm(algorithm: RotationAlgorithm): void {
+    const settings = this.getSettings();
+    settings.rotationAlgorithm = algorithm;
+    this.saveSettings(settings);
   }
 
   private static migrate(data: AppData): AppData {

@@ -101,6 +101,44 @@ export class RotationService {
   }
 
   /**
+   * Get rotation recommendations based on currently selected algorithm.
+   * Checks settings to determine whether to use simple or weighted algorithm.
+   */
+  static getRecommendations(
+    gameId: string,
+    count: number = 5,
+    excludePlayerIds: string[] = []
+  ): RotationRecommendation[] {
+    const algorithm = StorageService.getRotationAlgorithm();
+
+    if (algorithm === 'weighted') {
+      // Use weighted priority algorithm
+      const game = StorageService.getGames().find(g => g.id === gameId);
+      if (!game || !game.currentQuarter || !game.currentSwap) {
+        // Fall back to simple if no current rotation
+        return this.recommendPlayers(gameId, count, excludePlayerIds);
+      }
+
+      const rotationNumber = (game.currentQuarter - 1) * 2 + game.currentSwap;
+      const priorities = this.recommendPlayersWithPriority(gameId, rotationNumber, excludePlayerIds);
+
+      // Convert to RotationRecommendation format
+      return priorities.slice(0, count).map(p => ({
+        playerId: p.playerId,
+        playerName: p.playerName,
+        playerNumber: p.playerNumber,
+        normalizedPlayTime: p.factors.historicalNormalizedTime,
+        totalPlayTime: p.factors.currentGameMinutes,
+        gamesAttended: p.factors.gamesAttendedTotal,
+        reason: p.notes,
+      }));
+    }
+
+    // Default: use simple algorithm
+    return this.recommendPlayers(gameId, count, excludePlayerIds);
+  }
+
+  /**
    * Get current players on court for the current rotation
    */
   static getCurrentPlayersOnCourt(gameId: string): string[] {
