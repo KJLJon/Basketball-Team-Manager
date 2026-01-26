@@ -11,9 +11,10 @@ interface RotationSelectorProps {
   players: Player[];
   onRefresh: () => void;
   onNextSwap: () => void;
+  onRotationSaved?: () => void;
 }
 
-export function RotationSelector({ game, players, onRefresh, onNextSwap }: RotationSelectorProps) {
+export function RotationSelector({ game, players, onRefresh, onNextSwap, onRotationSaved }: RotationSelectorProps) {
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
   const [showRecommendations, setShowRecommendations] = useState(false);
 
@@ -62,6 +63,7 @@ export function RotationSelector({ game, players, onRefresh, onNextSwap }: Rotat
 
     GameService.addRotation(game.id, rotation);
     onRefresh();
+    onRotationSaved?.();
   };
 
   const handleApplyRecommendations = () => {

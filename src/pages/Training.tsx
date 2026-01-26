@@ -4,6 +4,7 @@ import { Button } from '../components/common/Button';
 
 // Define 5-out offense scenarios
 // Court is oriented with basket at bottom (y=92%), half court at top (y=22%)
+// 3-point line positions: top ~y=32, wings ~y=48, corners ~y=70
 const fiveOutPlays: CourtPlay[] = [
   {
     name: '5-Out Basic Spacing',
@@ -11,11 +12,18 @@ const fiveOutPlays: CourtPlay[] = [
     steps: [
       {
         positions: [
-          { x: 50, y: 45, label: '1', hasBall: true },
-          { x: 20, y: 65, label: '2' },
-          { x: 80, y: 65, label: '3' },
-          { x: 15, y: 82, label: '4' },
-          { x: 85, y: 82, label: '5' },
+          { x: 50, y: 32, label: '1', hasBall: true },
+          { x: 22, y: 48, label: '2' },
+          { x: 78, y: 48, label: '3' },
+          { x: 12, y: 70, label: '4' },
+          { x: 88, y: 70, label: '5' },
+        ],
+        defenders: [
+          { x: 50, y: 40 },
+          { x: 28, y: 52 },
+          { x: 72, y: 52 },
+          { x: 18, y: 72 },
+          { x: 82, y: 72 },
         ],
         description: 'Initial 5-out spacing: Point guard at top of 3-point arc, wings spread at 3-point line, corners at 3-point line. Notice the spacing - everyone is evenly distributed around the perimeter.',
       },
@@ -27,21 +35,35 @@ const fiveOutPlays: CourtPlay[] = [
     steps: [
       {
         positions: [
-          { x: 50, y: 45, label: '1', hasBall: true },
-          { x: 20, y: 65, label: '2' },
-          { x: 80, y: 65, label: '3' },
-          { x: 15, y: 82, label: '4' },
-          { x: 85, y: 82, label: '5' },
+          { x: 50, y: 32, label: '1', hasBall: true },
+          { x: 22, y: 48, label: '2' },
+          { x: 78, y: 48, label: '3' },
+          { x: 12, y: 70, label: '4' },
+          { x: 88, y: 70, label: '5' },
+        ],
+        defenders: [
+          { x: 50, y: 40 },
+          { x: 28, y: 52 },
+          { x: 72, y: 52 },
+          { x: 18, y: 72 },
+          { x: 82, y: 72 },
         ],
         description: 'Step 1: Point guard has the ball at the top of the key.',
       },
       {
         positions: [
-          { x: 50, y: 45, label: '1' },
-          { x: 20, y: 65, label: '2', hasBall: true },
-          { x: 80, y: 65, label: '3' },
-          { x: 15, y: 82, label: '4' },
-          { x: 85, y: 82, label: '5' },
+          { x: 50, y: 32, label: '1' },
+          { x: 22, y: 48, label: '2', hasBall: true },
+          { x: 78, y: 48, label: '3' },
+          { x: 12, y: 70, label: '4' },
+          { x: 88, y: 70, label: '5' },
+        ],
+        defenders: [
+          { x: 50, y: 40 },
+          { x: 28, y: 52 },
+          { x: 72, y: 52 },
+          { x: 18, y: 72 },
+          { x: 82, y: 72 },
         ],
         description: 'Step 2: Player 1 passes to Player 2 on the wing.',
         movements: [
@@ -50,11 +72,18 @@ const fiveOutPlays: CourtPlay[] = [
       },
       {
         positions: [
-          { x: 40, y: 80, label: '1' },
-          { x: 20, y: 75, label: '2', hasBall: true },
-          { x: 80, y: 75, label: '3' },
-          { x: 15, y: 87, label: '4' },
-          { x: 85, y: 87, label: '5' },
+          { x: 40, y: 75, label: '1' },
+          { x: 22, y: 52, label: '2', hasBall: true },
+          { x: 78, y: 52, label: '3' },
+          { x: 12, y: 75, label: '4' },
+          { x: 88, y: 75, label: '5' },
+        ],
+        defenders: [
+          { x: 45, y: 65 },
+          { x: 28, y: 55 },
+          { x: 72, y: 55 },
+          { x: 18, y: 75 },
+          { x: 82, y: 75 },
         ],
         description: 'Step 3: After passing, Player 1 cuts toward the basket looking for a return pass (give and go).',
         movements: [
@@ -63,11 +92,18 @@ const fiveOutPlays: CourtPlay[] = [
       },
       {
         positions: [
-          { x: 15, y: 87, label: '1' },
-          { x: 50, y: 55, label: '2', hasBall: true },
-          { x: 80, y: 75, label: '3' },
-          { x: 35, y: 65, label: '4' },
-          { x: 85, y: 87, label: '5' },
+          { x: 12, y: 75, label: '1' },
+          { x: 50, y: 35, label: '2', hasBall: true },
+          { x: 78, y: 52, label: '3' },
+          { x: 35, y: 48, label: '4' },
+          { x: 88, y: 75, label: '5' },
+        ],
+        defenders: [
+          { x: 18, y: 75 },
+          { x: 50, y: 42 },
+          { x: 72, y: 55 },
+          { x: 40, y: 52 },
+          { x: 82, y: 75 },
         ],
         description: 'Step 4: If cut isn\'t open, Player 1 fills the corner. Player 4 replaces at the top. Player 2 moves to point position. Spacing is maintained!',
         movements: [
@@ -84,21 +120,35 @@ const fiveOutPlays: CourtPlay[] = [
     steps: [
       {
         positions: [
-          { x: 50, y: 45, label: '1', hasBall: true },
-          { x: 20, y: 65, label: '2' },
-          { x: 80, y: 65, label: '3' },
-          { x: 15, y: 82, label: '4' },
-          { x: 85, y: 82, label: '5' },
+          { x: 50, y: 32, label: '1', hasBall: true },
+          { x: 22, y: 48, label: '2' },
+          { x: 78, y: 48, label: '3' },
+          { x: 12, y: 70, label: '4' },
+          { x: 88, y: 70, label: '5' },
+        ],
+        defenders: [
+          { x: 50, y: 40 },
+          { x: 28, y: 52 },
+          { x: 72, y: 52 },
+          { x: 18, y: 72 },
+          { x: 82, y: 72 },
         ],
         description: 'Step 1: Starting 5-out spacing with Player 1 at the top.',
       },
       {
         positions: [
-          { x: 50, y: 80, label: '1', hasBall: true },
-          { x: 20, y: 65, label: '2' },
-          { x: 80, y: 65, label: '3' },
-          { x: 15, y: 82, label: '4' },
-          { x: 85, y: 82, label: '5' },
+          { x: 50, y: 70, label: '1', hasBall: true },
+          { x: 22, y: 48, label: '2' },
+          { x: 78, y: 48, label: '3' },
+          { x: 12, y: 70, label: '4' },
+          { x: 88, y: 70, label: '5' },
+        ],
+        defenders: [
+          { x: 50, y: 75 },
+          { x: 35, y: 60 },
+          { x: 65, y: 60 },
+          { x: 18, y: 72 },
+          { x: 82, y: 72 },
         ],
         description: 'Step 2: Player 1 drives toward the basket. This forces the defense to help!',
         movements: [
@@ -107,11 +157,18 @@ const fiveOutPlays: CourtPlay[] = [
       },
       {
         positions: [
-          { x: 50, y: 80, label: '1', hasBall: true },
-          { x: 20, y: 75, label: '2' },
-          { x: 80, y: 65, label: '3' },
-          { x: 15, y: 87, label: '4' },
-          { x: 85, y: 87, label: '5' },
+          { x: 50, y: 70, label: '1', hasBall: true },
+          { x: 22, y: 52, label: '2' },
+          { x: 78, y: 45, label: '3' },
+          { x: 12, y: 75, label: '4' },
+          { x: 88, y: 75, label: '5' },
+        ],
+        defenders: [
+          { x: 50, y: 75 },
+          { x: 35, y: 60 },
+          { x: 65, y: 60 },
+          { x: 18, y: 75 },
+          { x: 82, y: 75 },
         ],
         description: 'Step 3: As the defense collapses, Player 3 lifts slightly for better passing angle.',
         movements: [
@@ -120,11 +177,18 @@ const fiveOutPlays: CourtPlay[] = [
       },
       {
         positions: [
-          { x: 50, y: 80, label: '1' },
-          { x: 20, y: 75, label: '2' },
-          { x: 80, y: 65, label: '3', hasBall: true },
-          { x: 15, y: 87, label: '4' },
-          { x: 85, y: 87, label: '5' },
+          { x: 50, y: 70, label: '1' },
+          { x: 22, y: 52, label: '2' },
+          { x: 78, y: 45, label: '3', hasBall: true },
+          { x: 12, y: 75, label: '4' },
+          { x: 88, y: 75, label: '5' },
+        ],
+        defenders: [
+          { x: 50, y: 75 },
+          { x: 35, y: 60 },
+          { x: 72, y: 50 },
+          { x: 18, y: 75 },
+          { x: 82, y: 75 },
         ],
         description: 'Step 4: Player 1 kicks out to open Player 3 for a wide-open three-pointer!',
         movements: [
@@ -139,21 +203,35 @@ const fiveOutPlays: CourtPlay[] = [
     steps: [
       {
         positions: [
-          { x: 50, y: 45, label: '1', hasBall: true },
-          { x: 20, y: 65, label: '2' },
-          { x: 80, y: 65, label: '3' },
-          { x: 15, y: 82, label: '4' },
-          { x: 85, y: 82, label: '5' },
+          { x: 50, y: 32, label: '1', hasBall: true },
+          { x: 22, y: 48, label: '2' },
+          { x: 78, y: 48, label: '3' },
+          { x: 12, y: 70, label: '4' },
+          { x: 88, y: 70, label: '5' },
+        ],
+        defenders: [
+          { x: 50, y: 40 },
+          { x: 28, y: 52 },
+          { x: 72, y: 52 },
+          { x: 18, y: 72 },
+          { x: 82, y: 72 },
         ],
         description: 'Step 1: Standard 5-out spacing.',
       },
       {
         positions: [
-          { x: 50, y: 45, label: '1' },
-          { x: 20, y: 65, label: '2', hasBall: true },
-          { x: 80, y: 65, label: '3' },
-          { x: 15, y: 82, label: '4' },
-          { x: 85, y: 82, label: '5' },
+          { x: 50, y: 32, label: '1' },
+          { x: 22, y: 48, label: '2', hasBall: true },
+          { x: 78, y: 48, label: '3' },
+          { x: 12, y: 70, label: '4' },
+          { x: 88, y: 70, label: '5' },
+        ],
+        defenders: [
+          { x: 50, y: 40 },
+          { x: 28, y: 52 },
+          { x: 72, y: 52 },
+          { x: 18, y: 72 },
+          { x: 82, y: 72 },
         ],
         description: 'Step 2: Pass from Player 1 to Player 2.',
         movements: [
@@ -162,37 +240,58 @@ const fiveOutPlays: CourtPlay[] = [
       },
       {
         positions: [
-          { x: 75, y: 75, label: '1' },
-          { x: 20, y: 75, label: '2', hasBall: true },
-          { x: 80, y: 75, label: '3' },
-          { x: 15, y: 87, label: '4' },
-          { x: 85, y: 87, label: '5' },
+          { x: 72, y: 52, label: '1' },
+          { x: 22, y: 52, label: '2', hasBall: true },
+          { x: 78, y: 52, label: '3' },
+          { x: 12, y: 75, label: '4' },
+          { x: 88, y: 75, label: '5' },
+        ],
+        defenders: [
+          { x: 65, y: 55 },
+          { x: 28, y: 55 },
+          { x: 72, y: 55 },
+          { x: 18, y: 75 },
+          { x: 82, y: 75 },
         ],
         description: 'Step 3: Player 1 screens away (moves to screen for Player 3 on the opposite wing).',
         movements: [
-          { from: 0, to: 0, type: 'screen', path: [{ x: 65, y: 65 }] },
+          { from: 0, to: 0, type: 'screen', path: [{ x: 60, y: 45 }] },
         ],
       },
       {
         positions: [
-          { x: 75, y: 75, label: '1' },
-          { x: 20, y: 75, label: '2', hasBall: true },
-          { x: 50, y: 55, label: '3' },
-          { x: 15, y: 87, label: '4' },
-          { x: 85, y: 87, label: '5' },
+          { x: 72, y: 52, label: '1' },
+          { x: 22, y: 52, label: '2', hasBall: true },
+          { x: 50, y: 35, label: '3' },
+          { x: 12, y: 75, label: '4' },
+          { x: 88, y: 75, label: '5' },
+        ],
+        defenders: [
+          { x: 65, y: 55 },
+          { x: 28, y: 55 },
+          { x: 55, y: 42 },
+          { x: 18, y: 75 },
+          { x: 82, y: 75 },
         ],
         description: 'Step 4: Player 3 uses the screen and cuts to the top of the key, getting open for a shot.',
         movements: [
-          { from: 2, to: 2, type: 'cut', path: [{ x: 70, y: 65 }] },
+          { from: 2, to: 2, type: 'cut', path: [{ x: 68, y: 48 }] },
         ],
       },
       {
         positions: [
-          { x: 75, y: 75, label: '1' },
-          { x: 20, y: 75, label: '2' },
-          { x: 50, y: 55, label: '3', hasBall: true },
-          { x: 15, y: 87, label: '4' },
-          { x: 85, y: 87, label: '5' },
+          { x: 72, y: 52, label: '1' },
+          { x: 22, y: 52, label: '2' },
+          { x: 50, y: 35, label: '3', hasBall: true },
+          { x: 12, y: 75, label: '4' },
+          { x: 88, y: 75, label: '5' },
+        ],
+        defenders: [
+          { x: 65, y: 55 },
+          { x: 28, y: 55 },
+          { x: 55, y: 42 },
+          { x: 18, y: 75 },
+          { x: 82, y: 75 },
         ],
         description: 'Step 5: Player 2 passes to Player 3 for an open shot at the top!',
         movements: [
@@ -207,21 +306,35 @@ const fiveOutPlays: CourtPlay[] = [
     steps: [
       {
         positions: [
-          { x: 50, y: 45, label: '1', hasBall: true },
-          { x: 20, y: 65, label: '2' },
-          { x: 80, y: 65, label: '3' },
-          { x: 15, y: 82, label: '4' },
-          { x: 85, y: 82, label: '5' },
+          { x: 50, y: 32, label: '1', hasBall: true },
+          { x: 22, y: 48, label: '2' },
+          { x: 78, y: 48, label: '3' },
+          { x: 12, y: 70, label: '4' },
+          { x: 88, y: 70, label: '5' },
+        ],
+        defenders: [
+          { x: 50, y: 40 },
+          { x: 28, y: 52 },
+          { x: 72, y: 52 },
+          { x: 18, y: 72 },
+          { x: 82, y: 72 },
         ],
         description: 'Step 1: Ball at the top in 5-out spacing.',
       },
       {
         positions: [
-          { x: 50, y: 55, label: '1', hasBall: true },
-          { x: 20, y: 75, label: '2' },
-          { x: 80, y: 75, label: '3' },
-          { x: 30, y: 85, label: '4' },
-          { x: 85, y: 87, label: '5' },
+          { x: 50, y: 35, label: '1', hasBall: true },
+          { x: 22, y: 52, label: '2' },
+          { x: 78, y: 52, label: '3' },
+          { x: 35, y: 78, label: '4' },
+          { x: 88, y: 75, label: '5' },
+        ],
+        defenders: [
+          { x: 50, y: 42 },
+          { x: 28, y: 55 },
+          { x: 72, y: 55 },
+          { x: 38, y: 75 },
+          { x: 82, y: 75 },
         ],
         description: 'Step 2: Player 4 makes a basket cut from the corner (trying to get open for a layup).',
         movements: [
@@ -230,11 +343,18 @@ const fiveOutPlays: CourtPlay[] = [
       },
       {
         positions: [
-          { x: 50, y: 55, label: '1', hasBall: true },
-          { x: 20, y: 82, label: '2' },
-          { x: 80, y: 75, label: '3' },
-          { x: 30, y: 85, label: '4' },
-          { x: 85, y: 87, label: '5' },
+          { x: 50, y: 35, label: '1', hasBall: true },
+          { x: 18, y: 65, label: '2' },
+          { x: 78, y: 52, label: '3' },
+          { x: 35, y: 78, label: '4' },
+          { x: 88, y: 75, label: '5' },
+        ],
+        defenders: [
+          { x: 50, y: 42 },
+          { x: 24, y: 67 },
+          { x: 72, y: 55 },
+          { x: 38, y: 75 },
+          { x: 82, y: 75 },
         ],
         description: 'Step 3: Player 2 "fills down" toward the corner that Player 4 left.',
         movements: [
@@ -243,11 +363,18 @@ const fiveOutPlays: CourtPlay[] = [
       },
       {
         positions: [
-          { x: 50, y: 55, label: '1', hasBall: true },
-          { x: 15, y: 87, label: '2' },
-          { x: 80, y: 75, label: '3' },
-          { x: 20, y: 75, label: '4' },
-          { x: 85, y: 87, label: '5' },
+          { x: 50, y: 35, label: '1', hasBall: true },
+          { x: 12, y: 75, label: '2' },
+          { x: 78, y: 52, label: '3' },
+          { x: 22, y: 52, label: '4' },
+          { x: 88, y: 75, label: '5' },
+        ],
+        defenders: [
+          { x: 50, y: 42 },
+          { x: 18, y: 75 },
+          { x: 72, y: 55 },
+          { x: 28, y: 55 },
+          { x: 82, y: 75 },
         ],
         description: 'Step 4: Player 4 continues to the weak-side wing. Player 2 fills the corner. Spacing is restored!',
         movements: [
@@ -257,15 +384,22 @@ const fiveOutPlays: CourtPlay[] = [
       },
       {
         positions: [
-          { x: 50, y: 55, label: '1' },
-          { x: 15, y: 87, label: '2' },
-          { x: 80, y: 75, label: '3' },
-          { x: 20, y: 75, label: '4', hasBall: true },
-          { x: 85, y: 87, label: '5' },
+          { x: 50, y: 35, label: '1' },
+          { x: 12, y: 75, label: '2' },
+          { x: 78, y: 52, label: '3' },
+          { x: 22, y: 52, label: '4', hasBall: true },
+          { x: 88, y: 75, label: '5' },
+        ],
+        defenders: [
+          { x: 50, y: 42 },
+          { x: 18, y: 75 },
+          { x: 72, y: 55 },
+          { x: 28, y: 55 },
+          { x: 82, y: 75 },
         ],
         description: 'Step 5: Ball is swung to Player 4 in their new position. The offense continues!',
         movements: [
-          { from: 0, to: 3, type: 'pass', path: [{ x: 30, y: 60 }] },
+          { from: 0, to: 3, type: 'pass', path: [{ x: 32, y: 42 }] },
         ],
       },
     ],
@@ -276,21 +410,35 @@ const fiveOutPlays: CourtPlay[] = [
     steps: [
       {
         positions: [
-          { x: 50, y: 45, label: '1' },
-          { x: 20, y: 65, label: '2', hasBall: true },
-          { x: 80, y: 65, label: '3' },
-          { x: 15, y: 82, label: '4' },
-          { x: 85, y: 82, label: '5' },
+          { x: 50, y: 32, label: '1' },
+          { x: 22, y: 48, label: '2', hasBall: true },
+          { x: 78, y: 48, label: '3' },
+          { x: 12, y: 70, label: '4' },
+          { x: 88, y: 70, label: '5' },
+        ],
+        defenders: [
+          { x: 50, y: 40 },
+          { x: 28, y: 52 },
+          { x: 72, y: 52 },
+          { x: 18, y: 72 },
+          { x: 82, y: 72 },
         ],
         description: 'Step 1: Player 2 has the ball on the wing.',
       },
       {
         positions: [
-          { x: 50, y: 55, label: '1' },
-          { x: 35, y: 65, label: '2', hasBall: true },
-          { x: 80, y: 75, label: '3' },
-          { x: 15, y: 87, label: '4' },
-          { x: 85, y: 87, label: '5' },
+          { x: 50, y: 38, label: '1' },
+          { x: 38, y: 45, label: '2', hasBall: true },
+          { x: 78, y: 52, label: '3' },
+          { x: 12, y: 75, label: '4' },
+          { x: 88, y: 75, label: '5' },
+        ],
+        defenders: [
+          { x: 50, y: 45 },
+          { x: 35, y: 50 },
+          { x: 72, y: 55 },
+          { x: 18, y: 75 },
+          { x: 82, y: 75 },
         ],
         description: 'Step 2: Player 2 dribbles toward Player 1 at the top.',
         movements: [
@@ -299,11 +447,18 @@ const fiveOutPlays: CourtPlay[] = [
       },
       {
         positions: [
-          { x: 45, y: 58, label: '1' },
-          { x: 42, y: 62, label: '2', hasBall: true },
-          { x: 80, y: 75, label: '3' },
-          { x: 15, y: 87, label: '4' },
-          { x: 85, y: 87, label: '5' },
+          { x: 45, y: 42, label: '1' },
+          { x: 42, y: 45, label: '2', hasBall: true },
+          { x: 78, y: 52, label: '3' },
+          { x: 12, y: 75, label: '4' },
+          { x: 88, y: 75, label: '5' },
+        ],
+        defenders: [
+          { x: 48, y: 48 },
+          { x: 38, y: 50 },
+          { x: 72, y: 55 },
+          { x: 18, y: 75 },
+          { x: 82, y: 75 },
         ],
         description: 'Step 3: Player 1 moves slightly toward Player 2. They meet for the handoff.',
         movements: [
@@ -313,11 +468,18 @@ const fiveOutPlays: CourtPlay[] = [
       },
       {
         positions: [
-          { x: 50, y: 55, label: '1', hasBall: true },
-          { x: 42, y: 62, label: '2' },
-          { x: 80, y: 75, label: '3' },
-          { x: 15, y: 87, label: '4' },
-          { x: 85, y: 87, label: '5' },
+          { x: 50, y: 38, label: '1', hasBall: true },
+          { x: 42, y: 45, label: '2' },
+          { x: 78, y: 52, label: '3' },
+          { x: 12, y: 75, label: '4' },
+          { x: 88, y: 75, label: '5' },
+        ],
+        defenders: [
+          { x: 50, y: 45 },
+          { x: 38, y: 50 },
+          { x: 72, y: 55 },
+          { x: 18, y: 75 },
+          { x: 82, y: 75 },
         ],
         description: 'Step 4: Player 1 receives the handoff and now has the ball with momentum!',
         movements: [
@@ -326,11 +488,18 @@ const fiveOutPlays: CourtPlay[] = [
       },
       {
         positions: [
-          { x: 50, y: 45, label: '1', hasBall: true },
-          { x: 20, y: 65, label: '2' },
-          { x: 80, y: 65, label: '3' },
-          { x: 15, y: 82, label: '4' },
-          { x: 85, y: 82, label: '5' },
+          { x: 50, y: 32, label: '1', hasBall: true },
+          { x: 22, y: 48, label: '2' },
+          { x: 78, y: 48, label: '3' },
+          { x: 12, y: 70, label: '4' },
+          { x: 88, y: 70, label: '5' },
+        ],
+        defenders: [
+          { x: 50, y: 40 },
+          { x: 28, y: 52 },
+          { x: 72, y: 52 },
+          { x: 18, y: 72 },
+          { x: 82, y: 72 },
         ],
         description: 'Step 5: Player 2 fills back to the wing. Spacing is maintained and the offense continues.',
         movements: [

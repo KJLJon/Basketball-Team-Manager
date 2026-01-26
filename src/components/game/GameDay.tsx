@@ -221,6 +221,7 @@ export function GameDay({ game, players, onRefresh }: GameDayProps) {
                 players={attendingPlayers}
                 onRefresh={onRefresh}
                 onNextSwap={handleNextSwap}
+                onRotationSaved={() => setCurrentView('current')}
               />
             )}
           </>
@@ -264,6 +265,8 @@ export function GameDay({ game, players, onRefresh }: GameDayProps) {
                         player={player}
                         stats={stats}
                         benchPlayers={benchPlayers}
+                        gameId={game.id}
+                        playersOnCourt={playersOnCourt}
                         onIncrementStat={(stat) => handleIncrementStat(player.id, stat)}
                         onSwapPlayer={(benchPlayerId) => handleSwapPlayer(player.id, benchPlayerId)}
                       />
@@ -279,6 +282,7 @@ export function GameDay({ game, players, onRefresh }: GameDayProps) {
           <SwapsOverview
             game={game}
             players={attendingPlayers}
+            allPlayers={players}
             onRefresh={onRefresh}
           />
         )}
