@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/common/Layout';
 import { Home } from './pages/Home';
@@ -9,8 +9,14 @@ import { Training } from './pages/Training';
 import { GameSetupPage } from './pages/GameSetupPage';
 import { GameDayPage } from './pages/GameDayPage';
 import { PlayerDetailPage } from './pages/PlayerDetailPage';
+import { GameService } from './services/game';
 
 function App() {
+  // Run migration on app load to convert old rotation format to new playerMinutes format
+  useEffect(() => {
+    GameService.migrateToPlayerMinutes();
+  }, []);
+
   return (
     <BrowserRouter basename="/Basketball-Team-Manager">
       <Layout>

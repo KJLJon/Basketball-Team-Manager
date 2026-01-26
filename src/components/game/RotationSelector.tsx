@@ -66,11 +66,18 @@ export function RotationSelector({ game, players, onRefresh, onNextSwap, onRotat
       return;
     }
 
+    // Create playerMinutes mapping for each selected player
+    const playerMinutes: Record<string, number> = {};
+    selectedPlayers.forEach(playerId => {
+      playerMinutes[playerId] = 4; // Default 4 minutes per player
+    });
+
     const rotation: Rotation = {
       quarter: game.currentQuarter,
       swap: game.currentSwap,
       playersOnCourt: selectedPlayers,
-      minutes: 4,
+      minutes: 4, // DEPRECATED: kept for backward compatibility
+      playerMinutes, // NEW: per-player minutes
       startTime: Date.now(),
     };
 
