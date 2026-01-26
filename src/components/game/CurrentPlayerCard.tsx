@@ -12,6 +12,7 @@ interface CurrentPlayerCardProps {
   playersOnCourt: string[];
   onIncrementStat: (stat: string) => void;
   onSwapPlayer: (benchPlayerId: string) => void;
+  onUpdate?: () => void; // Callback to refresh parent after swap
 }
 
 export function CurrentPlayerCard({
@@ -22,6 +23,7 @@ export function CurrentPlayerCard({
   playersOnCourt,
   onIncrementStat,
   onSwapPlayer,
+  onUpdate,
 }: CurrentPlayerCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showSwapDialog, setShowSwapDialog] = useState(false);
@@ -61,6 +63,9 @@ export function CurrentPlayerCard({
   }, [showMenu]);
 
   const totalPoints = stats.made1pt + stats.made2pt * 2 + stats.made3pt * 3;
+  const totalMisses = (stats.attempts1pt - stats.made1pt) +
+                      (stats.attempts2pt - stats.made2pt) +
+                      (stats.attempts3pt - stats.made3pt);
 
   const handleMade = (type: string) => {
     onIncrementStat(`attempts${type}`);
@@ -76,6 +81,10 @@ export function CurrentPlayerCard({
       onSwapPlayer(selectedSwapPlayer);
       setShowSwapDialog(false);
       setSelectedSwapPlayer(null);
+      // Trigger parent refresh to show updated players on court
+      if (onUpdate) {
+        onUpdate();
+      }
     }
   };
 
@@ -113,7 +122,7 @@ export function CurrentPlayerCard({
           </div>
           <div className="min-w-0">
             <div className="font-semibold text-xs leading-tight">
-              {player.name} <span className="text-[10px] text-gray-500 font-normal">Pts: {totalPoints} | Reb: {stats.rebounds} | Stl: {stats.steals}</span>
+              {player.name} <span className="text-[10px] text-gray-500 font-normal">Pts: {totalPoints} | Reb: {stats.rebounds} | Stl: {stats.steals} | Miss: {totalMisses}</span>
             </div>
           </div>
         </div>
