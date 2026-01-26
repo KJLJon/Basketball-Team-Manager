@@ -13,8 +13,10 @@ export type SwapNumber = 1 | 2;
 export interface Rotation {
   quarter: Quarter;
   swap: SwapNumber;
-  playersOnCourt: string[]; // Array of 5 player IDs
-  minutes: number; // Usually 4, but can be 2 for partial swaps
+  playersOnCourt: string[]; // Array of player IDs (usually 5, can be more for injury scenarios)
+  minutes: number; // DEPRECATED: Use playerMinutes instead. Usually 4, but can be 2 for partial swaps
+  playerMinutes?: Record<string, number>; // playerId -> minutes mapping for flexible time allocation
+  isSubstitution?: boolean; // Flag indicating this is a mid-swap substitution
   startTime?: number; // Timestamp when rotation started
 }
 
@@ -30,6 +32,8 @@ export interface PlayerStats {
   attempts3pt: number;
   made3pt: number;
   playTimeMinutes: number;
+  swapsAttended?: number; // Number of swaps (0-8) player was present for (partial attendance)
+  missedShots?: number; // Total missed shot attempts (calculated or manually tracked)
 }
 
 export interface Game {
@@ -43,6 +47,7 @@ export interface Game {
   status: GameStatus;
   currentQuarter?: Quarter;
   currentSwap?: SwapNumber;
+  precomputedOptimization?: GameRosterOptimization; // Whole-game rotation optimization (computed at start)
   createdAt: number;
 }
 
@@ -68,4 +73,44 @@ export interface RotationRecommendation {
   totalPlayTime: number;
   gamesAttended: number;
   reason: string;
+}
+
+// New types for enhanced rotation optimization
+
+export type PriorityLevel = 'high-priority' | 'medium' | 'low-priority';
+
+export interface PlayerRotationPriority {
+  playerId: string;
+  playerName: string;
+  playerNumber: string;
+  priorityScore: number; // Lower = higher priority to play
+  factors: {
+    currentGameMinutes: number; // Minutes already played in current game
+    historicalNormalizedTime: number; // Average minutes per game historically
+    gamesAttendedTotal: number; // Total games player has attended
+    swapsAttendedCurrent: number; // Swaps attended in current game (0-8)
+  };
+  visualIndicator: PriorityLevel; // Visual indicator for UI
+  notes: string; // Human-readable reason for priority level
+}
+
+export interface OptimizedRotation {
+  quarter: Quarter;
+  swap: SwapNumber;
+  playerIds: string[]; // Players selected for this rotation
+  minutesPerPlayer: Record<string, number>; // playerId -> minutes mapping
+  reasoning: string; // Why these players were selected
+}
+
+export interface GameRosterOptimization {
+  gameId: string;
+  rotations: OptimizedRotation[]; // All 8 rotations precomputed
+  playerSummary: Record<string, {
+    totalMinutes: number; // Projected total minutes for game
+    rotationsPlayed: number[]; // Array of rotation numbers (1-8) player participates in
+    priorityLevel: PriorityLevel; // Overall priority for this player
+    notes: string; // Explanation of player's rotation schedule
+  }>;
+  fairnessScore: number; // 0-100, higher = more fair distribution
+  generatedAt: number; // Timestamp when optimization was computed
 }

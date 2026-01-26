@@ -1,5 +1,6 @@
 import type { Game, GameStatus, Quarter, SwapNumber, Rotation } from '@/types';
 import { StorageService } from './storage';
+import { PlayerService } from './player';
 
 export class GameService {
   static getAllGames(): Game[] {
@@ -86,7 +87,55 @@ export class GameService {
   }
 
   static setAttendance(gameId: string, playerIds: string[]): Game {
-    return this.updateGame(gameId, { attendance: playerIds });
+    const game = this.getGameById(gameId);
+    if (!game) {
+      throw new Error('Game not found');
+    }
+
+    // Calculate current rotation number (1-8) for partial attendance tracking
+    const currentRotationNumber = game.currentQuarter && game.currentSwap
+      ? ((game.currentQuarter - 1) * 2) + game.currentSwap
+      : 0;
+
+    // Initialize stats for all players if not present
+    const stats = { ...game.stats };
+
+    // Track partial attendance for players being added or removed mid-game
+    playerIds.forEach(playerId => {
+      if (!game.attendance.includes(playerId)) {
+        // Player being added mid-game (late arrival)
+        stats[playerId] = stats[playerId] || {
+          steals: 0,
+          rebounds: 0,
+          attempts1pt: 0,
+          made1pt: 0,
+          attempts2pt: 0,
+          made2pt: 0,
+          attempts3pt: 0,
+          made3pt: 0,
+          playTimeMinutes: 0,
+        };
+        // Set swaps attended = remaining swaps (8 - current + 1)
+        stats[playerId].swapsAttended = currentRotationNumber > 0
+          ? Math.max(0, 8 - currentRotationNumber + 1)
+          : 8;
+      }
+    });
+
+    // Players being removed mid-game (early departure)
+    game.attendance.forEach(playerId => {
+      if (!playerIds.includes(playerId) && stats[playerId]) {
+        // Set swaps attended = rotations already played
+        stats[playerId].swapsAttended = currentRotationNumber > 0
+          ? currentRotationNumber - 1
+          : 0;
+      }
+    });
+
+    return this.updateGame(gameId, {
+      attendance: playerIds,
+      stats
+    });
   }
 
   static startGame(gameId: string): Game {
@@ -95,14 +144,45 @@ export class GameService {
       throw new Error('Game not found');
     }
 
-    if (game.attendance.length === 0) {
-      throw new Error('Cannot start game without players in attendance');
+    // Get all players and assume they're all attending initially
+    const allPlayers = PlayerService.getAllPlayers();
+
+    // If attendance is empty, set all players as attending
+    const attendance = game.attendance.length > 0
+      ? game.attendance
+      : allPlayers.map(p => p.id);
+
+    if (attendance.length === 0) {
+      throw new Error('Cannot start game without any players on the team');
     }
+
+    // Initialize stats for all attending players
+    const stats = { ...game.stats };
+    attendance.forEach(playerId => {
+      if (!stats[playerId]) {
+        stats[playerId] = {
+          steals: 0,
+          rebounds: 0,
+          attempts1pt: 0,
+          made1pt: 0,
+          attempts2pt: 0,
+          made2pt: 0,
+          attempts3pt: 0,
+          made3pt: 0,
+          playTimeMinutes: 0,
+          swapsAttended: 8, // Assume full attendance initially
+        };
+      } else if (stats[playerId].swapsAttended === undefined) {
+        stats[playerId].swapsAttended = 8;
+      }
+    });
 
     return this.updateGame(gameId, {
       status: 'in-progress',
       currentQuarter: 1,
       currentSwap: 1,
+      attendance,
+      stats,
     });
   }
 
@@ -118,9 +198,11 @@ export class GameService {
       throw new Error('Game not found');
     }
 
-    if (rotation.playersOnCourt.length < 1 || rotation.playersOnCourt.length > 5) {
-      throw new Error('Rotation must have between 1 and 5 players on court');
+    if (rotation.playersOnCourt.length < 1) {
+      throw new Error('Rotation must have at least 1 player on court');
     }
+
+    // Note: Allowing more than 5 players for injury scenarios where players share minutes
 
     const rotations = [...game.rotations, rotation];
     return this.updateGame(gameId, { rotations });
@@ -207,5 +289,57 @@ export class GameService {
     });
 
     return this.updateGame(gameId, { rotations });
+  }
+
+  /**
+   * Update the number of swaps a player attended (0-8) for partial attendance tracking.
+   * This is separate from play time minutes.
+   */
+  static updatePlayerSwapsAttended(
+    gameId: string,
+    playerId: string,
+    swapsAttended: number
+  ): Game {
+    const game = this.getGameById(gameId);
+    if (!game) {
+      throw new Error('Game not found');
+    }
+
+    if (swapsAttended < 0 || swapsAttended > 8) {
+      throw new Error('Swaps attended must be between 0 and 8');
+    }
+
+    const stats = { ...game.stats };
+
+    // Initialize stats if not present
+    if (!stats[playerId]) {
+      stats[playerId] = {
+        steals: 0,
+        rebounds: 0,
+        attempts1pt: 0,
+        made1pt: 0,
+        attempts2pt: 0,
+        made2pt: 0,
+        attempts3pt: 0,
+        made3pt: 0,
+        playTimeMinutes: 0,
+      };
+    }
+
+    stats[playerId].swapsAttended = swapsAttended;
+
+    // Update attendance array based on swaps attended
+    const attendance = [...game.attendance];
+    if (swapsAttended > 0 && !attendance.includes(playerId)) {
+      attendance.push(playerId);
+    } else if (swapsAttended === 0 && attendance.includes(playerId)) {
+      const index = attendance.indexOf(playerId);
+      attendance.splice(index, 1);
+    }
+
+    return this.updateGame(gameId, {
+      stats,
+      attendance
+    });
   }
 }
