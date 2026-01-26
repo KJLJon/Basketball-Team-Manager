@@ -14,8 +14,9 @@ import { StatsService } from './stats';
 export class RotationService {
   /**
    * Recommends players for the next rotation based on:
-   * 1. Least normalized play time (total minutes / games attended)
-   * 2. Tie-breaker: least total play time
+   * 1. Normalized play time (total minutes including current game / total attendance including current)
+   * 2. Tie-breaker 1: Fewer games attended = higher priority
+   * 3. Tie-breaker 2: Earlier createdAt (older players) = higher priority
    */
   static recommendPlayers(
     gameId: string,
@@ -30,7 +31,15 @@ export class RotationService {
     const players = StorageService.getPlayers();
     const attendingPlayerIds = game.attendance;
 
-    // Get season stats for all attending players
+    // Calculate current rotation number for fractional attendance
+    const currentRotationNumber = game.currentQuarter && game.currentSwap
+      ? ((game.currentQuarter - 1) * 2) + game.currentSwap
+      : 1;
+
+    // Get all games for historical data
+    const allGames = StorageService.getGames();
+
+    // Calculate recommendations with current game included
     const recommendations: RotationRecommendation[] = [];
 
     for (const playerId of attendingPlayerIds) {
@@ -42,25 +51,50 @@ export class RotationService {
       const player = players.find(p => p.id === playerId);
       if (!player) continue;
 
+      // Get historical stats
       const seasonStats = StatsService.getPlayerSeasonStats(playerId);
+
+      // Calculate current game stats
+      const currentGameMinutes = StatsService.calculatePlayTime(gameId, playerId);
+      const currentGameSwapsAttended = game.stats[playerId]?.swapsAttended ?? 8;
+      const currentGameAttendance = currentGameSwapsAttended / 8; // Fractional
+
+      // Total including current game
+      const totalMinutes = seasonStats.playTimeMinutes + currentGameMinutes;
+      const totalAttendance = seasonStats.gamesAttended + currentGameAttendance;
+      const normalizedPlayTime = totalAttendance > 0 ? totalMinutes / totalAttendance : 0;
 
       recommendations.push({
         playerId,
         playerName: player.name,
         playerNumber: player.number,
-        normalizedPlayTime: seasonStats.normalizedPlayTime,
-        totalPlayTime: seasonStats.playTimeMinutes,
-        gamesAttended: seasonStats.gamesAttended,
-        reason: this.generateReason(seasonStats.normalizedPlayTime, seasonStats.playTimeMinutes),
+        normalizedPlayTime,
+        totalPlayTime: totalMinutes,
+        gamesAttended: Math.floor(totalAttendance), // Show as integer
+        reason: this.generateReason(normalizedPlayTime, totalMinutes),
       });
     }
 
-    // Sort by normalized play time (ascending), then by total play time (ascending)
+    // Sort by: normalized time -> attendance -> createdAt
     recommendations.sort((a, b) => {
-      if (a.normalizedPlayTime !== b.normalizedPlayTime) {
+      // 1. Primary: Normalized play time (ascending)
+      if (Math.abs(a.normalizedPlayTime - b.normalizedPlayTime) > 0.01) {
         return a.normalizedPlayTime - b.normalizedPlayTime;
       }
-      return a.totalPlayTime - b.totalPlayTime;
+
+      // 2. Tie-breaker 1: Fewer games attended = higher priority
+      if (a.gamesAttended !== b.gamesAttended) {
+        return a.gamesAttended - b.gamesAttended;
+      }
+
+      // 3. Tie-breaker 2: Earlier createdAt
+      const playerA = players.find(p => p.id === a.playerId);
+      const playerB = players.find(p => p.id === b.playerId);
+      if (playerA && playerB) {
+        return playerA.createdAt - playerB.createdAt;
+      }
+
+      return 0;
     });
 
     return recommendations.slice(0, count);
