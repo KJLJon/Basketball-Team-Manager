@@ -113,8 +113,7 @@ export function GameDay({ game, players, onRefresh }: GameDayProps) {
         game.currentQuarter,
         game.currentSwap,
         playerOutId,
-        playerInId,
-        2 // 2 minutes each
+        playerInId
       );
       StatsService.updatePlayTimeForGame(game.id);
       onRefresh();
