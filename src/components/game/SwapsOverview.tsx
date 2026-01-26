@@ -126,107 +126,112 @@ export function SwapsOverview({ game, players, onRefresh }: SwapsOverviewProps) 
         </div>
       </Card>
 
-      {selectedPlayerData && selectedPlayerStats && (
-        <Card className="border-2 border-blue-500">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-full bg-blue-600 text-white font-bold text-sm flex items-center justify-center">
-                {selectedPlayerData.number}
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg">{selectedPlayerData.name}</h3>
-                <p className="text-sm text-gray-600">
-                  {StatsService.calculatePlayTime(game.id, selectedPlayer)} minutes played
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setSelectedPlayer(null)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+      {selectedPlayer && selectedPlayerData && selectedPlayerStats && (() => {
+        // Extract selectedPlayer to a const so TypeScript knows it's not null in callbacks
+        const playerId = selectedPlayer;
 
-          <div className="space-y-1">
-            <div className="mb-3 p-3 bg-blue-50 rounded">
-              <div className="text-2xl font-bold text-blue-600">
-                {selectedPlayerStats.made1pt + selectedPlayerStats.made2pt * 2 + selectedPlayerStats.made3pt * 3}
+        return (
+          <Card className="border-2 border-blue-500">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-full bg-blue-600 text-white font-bold text-sm flex items-center justify-center">
+                  {selectedPlayerData.number}
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">{selectedPlayerData.name}</h3>
+                  <p className="text-sm text-gray-600">
+                    {StatsService.calculatePlayTime(game.id, playerId)} minutes played
+                  </p>
+                </div>
               </div>
-              <div className="text-xs text-gray-600">Total Points</div>
+              <button
+                onClick={() => setSelectedPlayer(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
 
-            <EditableStatRow
-              label="Steals"
-              value={selectedPlayerStats.steals}
-              onIncrement={() => handleIncrementStat(selectedPlayer, 'steals')}
-              onDecrement={() => handleDecrementStat(selectedPlayer, 'steals')}
-            />
-            <EditableStatRow
-              label="Rebounds"
-              value={selectedPlayerStats.rebounds}
-              onIncrement={() => handleIncrementStat(selectedPlayer, 'rebounds')}
-              onDecrement={() => handleDecrementStat(selectedPlayer, 'rebounds')}
-            />
-            <EditableStatRow
-              label="Made 1pt"
-              value={selectedPlayerStats.made1pt}
-              onIncrement={() => {
-                handleIncrementStat(selectedPlayer, 'made1pt');
-                handleIncrementStat(selectedPlayer, 'attempts1pt');
-              }}
-              onDecrement={() => {
-                handleDecrementStat(selectedPlayer, 'made1pt');
-                handleDecrementStat(selectedPlayer, 'attempts1pt');
-              }}
-            />
-            <EditableStatRow
-              label="Made 2pt"
-              value={selectedPlayerStats.made2pt}
-              onIncrement={() => {
-                handleIncrementStat(selectedPlayer, 'made2pt');
-                handleIncrementStat(selectedPlayer, 'attempts2pt');
-              }}
-              onDecrement={() => {
-                handleDecrementStat(selectedPlayer, 'made2pt');
-                handleDecrementStat(selectedPlayer, 'attempts2pt');
-              }}
-            />
-            <EditableStatRow
-              label="Made 3pt"
-              value={selectedPlayerStats.made3pt}
-              onIncrement={() => {
-                handleIncrementStat(selectedPlayer, 'made3pt');
-                handleIncrementStat(selectedPlayer, 'attempts3pt');
-              }}
-              onDecrement={() => {
-                handleDecrementStat(selectedPlayer, 'made3pt');
-                handleDecrementStat(selectedPlayer, 'attempts3pt');
-              }}
-            />
-            <EditableStatRow
-              label="Miss 1pt"
-              value={selectedPlayerStats.attempts1pt - selectedPlayerStats.made1pt}
-              onIncrement={() => handleIncrementStat(selectedPlayer, 'attempts1pt')}
-              onDecrement={() => handleDecrementStat(selectedPlayer, 'attempts1pt')}
-            />
-            <EditableStatRow
-              label="Miss 2pt"
-              value={selectedPlayerStats.attempts2pt - selectedPlayerStats.made2pt}
-              onIncrement={() => handleIncrementStat(selectedPlayer, 'attempts2pt')}
-              onDecrement={() => handleDecrementStat(selectedPlayer, 'attempts2pt')}
-            />
-            <EditableStatRow
-              label="Miss 3pt"
-              value={selectedPlayerStats.attempts3pt - selectedPlayerStats.made3pt}
-              onIncrement={() => handleIncrementStat(selectedPlayer, 'attempts3pt')}
-              onDecrement={() => handleDecrementStat(selectedPlayer, 'attempts3pt')}
-            />
-          </div>
-        </Card>
-      )}
+            <div className="space-y-1">
+              <div className="mb-3 p-3 bg-blue-50 rounded">
+                <div className="text-2xl font-bold text-blue-600">
+                  {selectedPlayerStats.made1pt + selectedPlayerStats.made2pt * 2 + selectedPlayerStats.made3pt * 3}
+                </div>
+                <div className="text-xs text-gray-600">Total Points</div>
+              </div>
+
+              <EditableStatRow
+                label="Steals"
+                value={selectedPlayerStats.steals}
+                onIncrement={() => handleIncrementStat(playerId, 'steals')}
+                onDecrement={() => handleDecrementStat(playerId, 'steals')}
+              />
+              <EditableStatRow
+                label="Rebounds"
+                value={selectedPlayerStats.rebounds}
+                onIncrement={() => handleIncrementStat(playerId, 'rebounds')}
+                onDecrement={() => handleDecrementStat(playerId, 'rebounds')}
+              />
+              <EditableStatRow
+                label="Made 1pt"
+                value={selectedPlayerStats.made1pt}
+                onIncrement={() => {
+                  handleIncrementStat(playerId, 'made1pt');
+                  handleIncrementStat(playerId, 'attempts1pt');
+                }}
+                onDecrement={() => {
+                  handleDecrementStat(playerId, 'made1pt');
+                  handleDecrementStat(playerId, 'attempts1pt');
+                }}
+              />
+              <EditableStatRow
+                label="Made 2pt"
+                value={selectedPlayerStats.made2pt}
+                onIncrement={() => {
+                  handleIncrementStat(playerId, 'made2pt');
+                  handleIncrementStat(playerId, 'attempts2pt');
+                }}
+                onDecrement={() => {
+                  handleDecrementStat(playerId, 'made2pt');
+                  handleDecrementStat(playerId, 'attempts2pt');
+                }}
+              />
+              <EditableStatRow
+                label="Made 3pt"
+                value={selectedPlayerStats.made3pt}
+                onIncrement={() => {
+                  handleIncrementStat(playerId, 'made3pt');
+                  handleIncrementStat(playerId, 'attempts3pt');
+                }}
+                onDecrement={() => {
+                  handleDecrementStat(playerId, 'made3pt');
+                  handleDecrementStat(playerId, 'attempts3pt');
+                }}
+              />
+              <EditableStatRow
+                label="Miss 1pt"
+                value={selectedPlayerStats.attempts1pt - selectedPlayerStats.made1pt}
+                onIncrement={() => handleIncrementStat(playerId, 'attempts1pt')}
+                onDecrement={() => handleDecrementStat(playerId, 'attempts1pt')}
+              />
+              <EditableStatRow
+                label="Miss 2pt"
+                value={selectedPlayerStats.attempts2pt - selectedPlayerStats.made2pt}
+                onIncrement={() => handleIncrementStat(playerId, 'attempts2pt')}
+                onDecrement={() => handleDecrementStat(playerId, 'attempts2pt')}
+              />
+              <EditableStatRow
+                label="Miss 3pt"
+                value={selectedPlayerStats.attempts3pt - selectedPlayerStats.made3pt}
+                onIncrement={() => handleIncrementStat(playerId, 'attempts3pt')}
+                onDecrement={() => handleDecrementStat(playerId, 'attempts3pt')}
+              />
+            </div>
+          </Card>
+        );
+      })()}
     </div>
   );
 }
