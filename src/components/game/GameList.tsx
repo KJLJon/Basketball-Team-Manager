@@ -29,7 +29,7 @@ export function GameList({ games, onCreateGame, onDeleteGame, onStartGame }: Gam
   };
 
   const handleGameClick = (game: Game) => {
-    if (game.status === 'in-progress') {
+    if (game.status === 'in-progress' || game.status === 'completed') {
       navigate(`/game/${game.id}`);
     } else {
       navigate(`/game/${game.id}/setup`);
@@ -42,9 +42,17 @@ export function GameList({ games, onCreateGame, onDeleteGame, onStartGame }: Gam
     navigate(`/game/${gameId}`);
   };
 
-  const upcomingGames = games.filter(g => g.status === 'scheduled');
+  // Sort upcoming games by date (earliest first)
+  const upcomingGames = games
+    .filter(g => g.status === 'scheduled')
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
   const inProgressGame = games.find(g => g.status === 'in-progress');
-  const completedGames = games.filter(g => g.status === 'completed');
+
+  // Sort completed games by date (most recent first)
+  const completedGames = games
+    .filter(g => g.status === 'completed')
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const getStatusBadge = (status: Game['status']) => {
     const badges = {

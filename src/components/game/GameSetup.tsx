@@ -51,6 +51,8 @@ export function GameSetup({ game, players, onUpdateAttendance, onStartGame }: Ga
 
   // Sort players alphabetically by name
   const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name));
+  const isCompleted = game.status === 'completed';
+  const isInProgress = game.status === 'in-progress';
 
   return (
     <div className="p-4 space-y-4 pb-40">
@@ -60,6 +62,12 @@ export function GameSetup({ game, players, onUpdateAttendance, onStartGame }: Ga
           <p><strong>Opponent:</strong> {game.opponent}</p>
           <p><strong>Date:</strong> {formatDate(game.date)}</p>
           <p><strong>Location:</strong> {game.location}</p>
+          {isCompleted && (
+            <p className="text-green-600 font-semibold mt-2">Status: Completed</p>
+          )}
+          {isInProgress && (
+            <p className="text-blue-600 font-semibold mt-2">Status: In Progress</p>
+          )}
         </div>
       </Card>
 
@@ -116,18 +124,40 @@ export function GameSetup({ game, players, onUpdateAttendance, onStartGame }: Ga
       </Card>
 
       <div className="fixed bottom-20 left-0 right-0 p-4 pb-6 bg-white border-t space-y-3">
-        <Button
-          onClick={handleSaveAndStart}
-          variant="success"
-          size="lg"
-          className="w-full"
-          disabled={selectedPlayers.length === 0}
-        >
-          Save & Start Game
-        </Button>
-        <Button onClick={handleSave} variant="secondary" className="w-full">
-          Save Attendance
-        </Button>
+        {isCompleted ? (
+          <Button
+            onClick={() => navigate(`/game/${game.id}`)}
+            variant="primary"
+            size="lg"
+            className="w-full"
+          >
+            View Game Results
+          </Button>
+        ) : isInProgress ? (
+          <Button
+            onClick={() => navigate(`/game/${game.id}`)}
+            variant="primary"
+            size="lg"
+            className="w-full"
+          >
+            Continue Game
+          </Button>
+        ) : (
+          <>
+            <Button
+              onClick={handleSaveAndStart}
+              variant="success"
+              size="lg"
+              className="w-full"
+              disabled={selectedPlayers.length === 0}
+            >
+              Save & Start Game
+            </Button>
+            <Button onClick={handleSave} variant="secondary" className="w-full">
+              Save Attendance
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );

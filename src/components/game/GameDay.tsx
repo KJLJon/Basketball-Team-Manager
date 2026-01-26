@@ -7,6 +7,7 @@ import { RotationSelector } from './RotationSelector';
 import { RotationHistory } from './RotationHistory';
 import { CurrentPlayerCard } from './CurrentPlayerCard';
 import { EditableStatRow } from './EditableStatRow';
+import { SwapsOverview } from './SwapsOverview';
 import { GameService } from '@/services/game';
 import { StatsService } from '@/services/stats';
 import { RotationService } from '@/services/rotation';
@@ -20,7 +21,7 @@ interface GameDayProps {
 export function GameDay({ game, players, onRefresh }: GameDayProps) {
   const navigate = useNavigate();
   const isCompleted = game.status === 'completed';
-  const [currentView, setCurrentView] = useState<'rotation' | 'current' | 'stats'>(
+  const [currentView, setCurrentView] = useState<'rotation' | 'current' | 'stats' | 'swaps'>(
     isCompleted ? 'stats' : 'rotation'
   );
   const [sortBy, setSortBy] = useState<'name' | 'number'>('name');
@@ -192,6 +193,16 @@ export function GameDay({ game, players, onRefresh }: GameDayProps) {
         >
           Stats
         </button>
+        <button
+          className={`flex-1 py-3 font-medium text-sm ${
+            currentView === 'swaps'
+              ? 'border-b-2 border-blue-600 text-blue-600'
+              : 'text-gray-600'
+          }`}
+          onClick={() => setCurrentView('swaps')}
+        >
+          Swaps
+        </button>
       </div>
 
       {/* Content */}
@@ -262,6 +273,14 @@ export function GameDay({ game, players, onRefresh }: GameDayProps) {
               </>
             )}
           </>
+        )}
+
+        {currentView === 'swaps' && (
+          <SwapsOverview
+            game={game}
+            players={attendingPlayers}
+            onRefresh={onRefresh}
+          />
         )}
 
         {currentView === 'stats' && (
