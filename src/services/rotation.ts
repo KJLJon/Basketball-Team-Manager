@@ -14,8 +14,9 @@ import { StatsService } from './stats';
 export class RotationService {
   /**
    * Recommends players for the next rotation based on:
-   * 1. Least normalized play time (total minutes / games attended)
-   * 2. Tie-breaker: least total play time
+   * 1. Normalized play time (total minutes including current game / total attendance including current)
+   * 2. Tie-breaker 1: Fewer games attended = higher priority
+   * 3. Tie-breaker 2: Earlier createdAt (older players) = higher priority
    */
   static recommendPlayers(
     gameId: string,
@@ -30,7 +31,15 @@ export class RotationService {
     const players = StorageService.getPlayers();
     const attendingPlayerIds = game.attendance;
 
-    // Get season stats for all attending players
+    // Calculate current rotation number for fractional attendance
+    const currentRotationNumber = game.currentQuarter && game.currentSwap
+      ? ((game.currentQuarter - 1) * 2) + game.currentSwap
+      : 1;
+
+    // Get all games for historical data
+    const allGames = StorageService.getGames();
+
+    // Calculate recommendations with current game included
     const recommendations: RotationRecommendation[] = [];
 
     for (const playerId of attendingPlayerIds) {
@@ -42,28 +51,91 @@ export class RotationService {
       const player = players.find(p => p.id === playerId);
       if (!player) continue;
 
+      // Get historical stats
       const seasonStats = StatsService.getPlayerSeasonStats(playerId);
+
+      // Calculate current game stats
+      const currentGameMinutes = StatsService.calculatePlayTime(gameId, playerId);
+      const currentGameSwapsAttended = game.stats[playerId]?.swapsAttended ?? 8;
+      const currentGameAttendance = currentGameSwapsAttended / 8; // Fractional
+
+      // Total including current game
+      const totalMinutes = seasonStats.playTimeMinutes + currentGameMinutes;
+      const totalAttendance = seasonStats.gamesAttended + currentGameAttendance;
+      const normalizedPlayTime = totalAttendance > 0 ? totalMinutes / totalAttendance : 0;
 
       recommendations.push({
         playerId,
         playerName: player.name,
         playerNumber: player.number,
-        normalizedPlayTime: seasonStats.normalizedPlayTime,
-        totalPlayTime: seasonStats.playTimeMinutes,
-        gamesAttended: seasonStats.gamesAttended,
-        reason: this.generateReason(seasonStats.normalizedPlayTime, seasonStats.playTimeMinutes),
+        normalizedPlayTime,
+        totalPlayTime: totalMinutes,
+        gamesAttended: Math.floor(totalAttendance), // Show as integer
+        reason: this.generateReason(normalizedPlayTime, totalMinutes),
       });
     }
 
-    // Sort by normalized play time (ascending), then by total play time (ascending)
+    // Sort by: normalized time -> attendance -> createdAt
     recommendations.sort((a, b) => {
-      if (a.normalizedPlayTime !== b.normalizedPlayTime) {
+      // 1. Primary: Normalized play time (ascending)
+      if (Math.abs(a.normalizedPlayTime - b.normalizedPlayTime) > 0.01) {
         return a.normalizedPlayTime - b.normalizedPlayTime;
       }
-      return a.totalPlayTime - b.totalPlayTime;
+
+      // 2. Tie-breaker 1: Fewer games attended = higher priority
+      if (a.gamesAttended !== b.gamesAttended) {
+        return a.gamesAttended - b.gamesAttended;
+      }
+
+      // 3. Tie-breaker 2: Earlier createdAt
+      const playerA = players.find(p => p.id === a.playerId);
+      const playerB = players.find(p => p.id === b.playerId);
+      if (playerA && playerB) {
+        return playerA.createdAt - playerB.createdAt;
+      }
+
+      return 0;
     });
 
     return recommendations.slice(0, count);
+  }
+
+  /**
+   * Get rotation recommendations based on currently selected algorithm.
+   * Checks settings to determine whether to use simple or weighted algorithm.
+   */
+  static getRecommendations(
+    gameId: string,
+    count: number = 5,
+    excludePlayerIds: string[] = []
+  ): RotationRecommendation[] {
+    const algorithm = StorageService.getRotationAlgorithm();
+
+    if (algorithm === 'weighted') {
+      // Use weighted priority algorithm
+      const game = StorageService.getGames().find(g => g.id === gameId);
+      if (!game || !game.currentQuarter || !game.currentSwap) {
+        // Fall back to simple if no current rotation
+        return this.recommendPlayers(gameId, count, excludePlayerIds);
+      }
+
+      const rotationNumber = (game.currentQuarter - 1) * 2 + game.currentSwap;
+      const priorities = this.recommendPlayersWithPriority(gameId, rotationNumber, excludePlayerIds);
+
+      // Convert to RotationRecommendation format
+      return priorities.slice(0, count).map(p => ({
+        playerId: p.playerId,
+        playerName: p.playerName,
+        playerNumber: p.playerNumber,
+        normalizedPlayTime: p.factors.historicalNormalizedTime,
+        totalPlayTime: p.factors.currentGameMinutes,
+        gamesAttended: p.factors.gamesAttendedTotal,
+        reason: p.notes,
+      }));
+    }
+
+    // Default: use simple algorithm
+    return this.recommendPlayers(gameId, count, excludePlayerIds);
   }
 
   /**
@@ -284,8 +356,9 @@ export class RotationService {
   }
 
   /**
-   * Optimize entire game roster by precomputing all 8 rotations for maximum fairness.
-   * Returns a complete rotation plan with player assignments and minutes.
+   * Optimize entire game roster by precomputing all 8 rotations using simple algorithm.
+   * Simulates game progression to account for accumulated minutes after each swap.
+   * This helps avoid injury scenarios where someone sits multiple swaps then must play all remaining.
    */
   static optimizeGameRoster(
     gameId: string,
@@ -296,7 +369,6 @@ export class RotationService {
       throw new Error('Game not found');
     }
 
-    const allGames = StorageService.getGames();
     const players = StorageService.getPlayers();
 
     // Calculate target minutes per player
@@ -305,10 +377,13 @@ export class RotationService {
       ? totalGameMinutes / attendingPlayerIds.length
       : 0;
 
-    // Initialize tracking for minutes assigned to each player
-    const playerMinutes: Record<string, number> = {};
+    // Initialize tracking for simulated minutes and attendance
+    const simulatedMinutes: Record<string, number> = {};
+    const simulatedAttendance: Record<string, number> = {}; // Fractional (0-1)
+
     attendingPlayerIds.forEach(playerId => {
-      playerMinutes[playerId] = 0;
+      simulatedMinutes[playerId] = 0;
+      simulatedAttendance[playerId] = 0; // Will increment by 1/8 per rotation
     });
 
     // Generate all 8 rotations
@@ -318,38 +393,71 @@ export class RotationService {
       const quarter = Math.ceil(rotationNum / 2) as Quarter;
       const swap = ((rotationNum - 1) % 2 + 1) as SwapNumber;
 
-      // Calculate priority for each player based on current minutes
-      const priorities: PlayerRotationPriority[] = [];
+      // Calculate normalized time for each player with simulated stats
+      const playerPriorities: Array<{
+        playerId: string;
+        normalizedTime: number;
+        totalAttendance: number;
+        createdAt: number;
+      }> = [];
 
       for (const playerId of attendingPlayerIds) {
-        const priority = this.calculatePlayerPriority(playerId, {
-          gameId,
-          currentGameMinutes: playerMinutes[playerId],
-          targetMinutes,
-          allGames,
-        });
+        const player = players.find(p => p.id === playerId);
+        if (!player) continue;
 
-        priorities.push(priority);
+        // Get historical stats (not including current game)
+        const seasonStats = StatsService.getPlayerSeasonStats(playerId);
+
+        // Simulated current game stats
+        const currentGameMinutes = simulatedMinutes[playerId];
+        const currentGameAttendance = simulatedAttendance[playerId];
+
+        // Total including simulated current game
+        const totalMinutes = seasonStats.playTimeMinutes + currentGameMinutes;
+        const totalAttendance = seasonStats.gamesAttended + currentGameAttendance;
+        const normalizedTime = totalAttendance > 0 ? totalMinutes / totalAttendance : 0;
+
+        playerPriorities.push({
+          playerId,
+          normalizedTime,
+          totalAttendance,
+          createdAt: player.createdAt,
+        });
       }
 
-      // Select top 5 players with lowest priority scores
-      const selectedPlayers = priorities
-        .sort((a, b) => a.priorityScore - b.priorityScore)
-        .slice(0, Math.min(5, attendingPlayerIds.length));
+      // Sort by: normalized time → attendance → createdAt
+      playerPriorities.sort((a, b) => {
+        // 1. Primary: Normalized play time (ascending)
+        if (Math.abs(a.normalizedTime - b.normalizedTime) > 0.01) {
+          return a.normalizedTime - b.normalizedTime;
+        }
 
+        // 2. Tie-breaker 1: Fewer games attended = higher priority
+        if (Math.abs(a.totalAttendance - b.totalAttendance) > 0.01) {
+          return a.totalAttendance - b.totalAttendance;
+        }
+
+        // 3. Tie-breaker 2: Earlier createdAt
+        return a.createdAt - b.createdAt;
+      });
+
+      // Select top 5 players
+      const selectedPlayers = playerPriorities.slice(0, Math.min(5, attendingPlayerIds.length));
       const playerIds = selectedPlayers.map(p => p.playerId);
       const minutesPerPlayer: Record<string, number> = {};
 
-      // Assign 4 minutes to each selected player
+      // Assign 4 minutes to each selected player and update simulated stats
       playerIds.forEach(playerId => {
         minutesPerPlayer[playerId] = 4;
-        playerMinutes[playerId] += 4;
+        simulatedMinutes[playerId] += 4;
+        simulatedAttendance[playerId] += 1 / 8; // Increment fractional attendance
       });
 
       // Generate reasoning
-      const reasoning = selectedPlayers.length > 0
-        ? `Selected ${selectedPlayers.length} players with lowest priority scores. ` +
-          `Focus: ${selectedPlayers[0].notes}`
+      const topPlayer = selectedPlayers[0];
+      const topPlayerObj = players.find(p => p.id === topPlayer.playerId);
+      const reasoning = topPlayer
+        ? `${topPlayerObj?.name || 'Player'} has ${topPlayer.normalizedTime.toFixed(1)} min/game (lowest)`
         : 'No players available';
 
       rotations.push({
@@ -368,7 +476,7 @@ export class RotationService {
       const player = players.find(p => p.id === playerId);
       if (!player) continue;
 
-      const totalMinutes = playerMinutes[playerId];
+      const totalMinutes = simulatedMinutes[playerId];
       const rotationsPlayed = rotations
         .map((r, index) => r.playerIds.includes(playerId) ? index + 1 : -1)
         .filter(i => i !== -1);
@@ -381,10 +489,10 @@ export class RotationService {
       let priorityLevel: PriorityLevel;
       let notes: string;
 
-      if (deviationPercent < -20) {
+      if (deviationPercent < -10) {
         priorityLevel = 'high-priority';
         notes = `Scheduled ${Math.round(totalMinutes)} min (${Math.round(deviationPercent)}% below target)`;
-      } else if (deviationPercent > 20) {
+      } else if (deviationPercent > 10) {
         priorityLevel = 'low-priority';
         notes = `Scheduled ${Math.round(totalMinutes)} min (${Math.round(deviationPercent)}% above target)`;
       } else {
@@ -401,14 +509,12 @@ export class RotationService {
     }
 
     // Calculate fairness score (0-100, higher = more fair)
-    // Based on standard deviation of minutes
-    const minutesArray = Object.values(playerMinutes);
+    const minutesArray = Object.values(simulatedMinutes);
     const avgMinutes = minutesArray.reduce((sum, m) => sum + m, 0) / minutesArray.length;
     const variance = minutesArray.reduce((sum, m) => sum + Math.pow(m - avgMinutes, 2), 0) / minutesArray.length;
     const stdDev = Math.sqrt(variance);
 
     // Fairness score: 100 = perfect (stdDev=0), decreases as stdDev increases
-    // Max acceptable stdDev is ~8 minutes (2 rotations difference)
     const fairnessScore = Math.max(0, Math.min(100, 100 - (stdDev / 8) * 100));
 
     return {

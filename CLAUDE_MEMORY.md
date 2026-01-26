@@ -321,5 +321,37 @@ npm run test     # Run tests
 
 ---
 
+---
+
+## Algorithm Refinement (Session 2)
+
+### User Request: Simplify Algorithm
+User wanted to change from weighted (Phase 2) to simpler 3-tier sort:
+1. Normalized time (including current game)
+2. Fewer games attended = higher priority
+3. Earlier createdAt (tie-breaker)
+
+### Implementation Complete ✅
+
+**Commits Made**:
+- `e3dbad5` - Update recommendPlayers to use simplified 3-tier sort
+- `9d17a4f` - Update optimizeGameRoster with game simulation
+- `1f95eb3` - Add algorithm toggle support (settings infrastructure)
+- `4dc6242` - Add algorithm toggle UI
+
+**Key Changes**:
+- Simple algorithm now default (more transparent, easier to explain)
+- Weighted algorithm kept as alternative (toggle in UI)
+- optimizeGameRoster simulates progression to avoid injury catch-up scenarios
+- Uses fractional attendance (swapsAttended/8) in current game
+- Algorithm preference persists to localStorage
+
+**Toggle UI**:
+- Blue button = Simple (Fair) - 3-tier sort
+- Purple button = Weighted (Advanced) - multi-factor scoring
+- Located in RotationSelector above recommendations
+
+---
+
 ## Last Updated: 2026-01-26
-## Status: ✅ ALL PHASES COMPLETE - Ready for testing and deployment!
+## Status: ✅ ALL PHASES COMPLETE + Algorithm refinement done!
