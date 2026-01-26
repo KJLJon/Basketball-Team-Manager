@@ -292,21 +292,26 @@ export class GameService {
 
     // Create new playerMinutes object with updated times
     const newPlayerMinutes = { ...currentPlayerMinutes };
-    newPlayerMinutes[playerOutId] = newPlayerOutTime;
+
+    // Update or remove player out's time
+    if (newPlayerOutTime > 0) {
+      // Keep their time tracked (they're on bench with remaining time)
+      newPlayerMinutes[playerOutId] = newPlayerOutTime;
+    } else {
+      // Remove completely if 0 minutes
+      delete newPlayerMinutes[playerOutId];
+    }
+
+    // Update player in's time
     newPlayerMinutes[playerInId] = cappedPlayerInTime;
 
     // Create new playersOnCourt array
-    let newPlayersOnCourt = [...oldRotation.playersOnCourt];
+    // ALWAYS remove player out from court (they go to bench)
+    let newPlayersOnCourt = oldRotation.playersOnCourt.filter(pid => pid !== playerOutId);
 
-    // Add player in if not already on court
+    // Add player in to court if not already there
     if (!newPlayersOnCourt.includes(playerInId)) {
       newPlayersOnCourt.push(playerInId);
-    }
-
-    // If player out has 0 minutes, remove them from court
-    if (newPlayerOutTime === 0) {
-      newPlayersOnCourt = newPlayersOnCourt.filter(pid => pid !== playerOutId);
-      delete newPlayerMinutes[playerOutId];
     }
 
     // Create new rotation object (immutable update)
