@@ -7,11 +7,17 @@ export interface PlayerPosition {
   hasBall?: boolean;
 }
 
+export interface DefenderPosition {
+  x: number; // percentage 0-100
+  y: number; // percentage 0-100
+}
+
 export interface CourtPlay {
   name: string;
   description: string;
   steps: {
     positions: PlayerPosition[];
+    defenders?: DefenderPosition[];
     description: string;
     movements?: {
       from: number; // player index
@@ -172,6 +178,48 @@ export const BasketballCourt: React.FC<BasketballCourtProps> = ({ currentStep, p
               >
                 {player.label}
               </text>
+            </g>
+          );
+        })}
+
+        {/* Defenders (X markers) */}
+        {step.defenders?.map((defender, idx) => {
+          const x = (defender.x / 100) * 480 + 10;
+          const y = (defender.y / 100) * 450 + 10;
+          const prevDefender = prevStep?.defenders?.[idx];
+          const prevX = prevDefender ? (prevDefender.x / 100) * 480 + 10 : x;
+          const prevY = prevDefender ? (prevDefender.y / 100) * 450 + 10 : y;
+
+          return (
+            <g
+              key={`defender-${idx}`}
+              className="player-transition"
+              style={{
+                '--from-x': `${prevX}px`,
+                '--from-y': `${prevY}px`,
+                '--to-x': `${x}px`,
+                '--to-y': `${y}px`,
+              } as React.CSSProperties}
+            >
+              {/* X marker for defender */}
+              <line
+                x1={x - 10}
+                y1={y - 10}
+                x2={x + 10}
+                y2={y + 10}
+                stroke="#DC2626"
+                strokeWidth="3"
+                strokeLinecap="round"
+              />
+              <line
+                x1={x + 10}
+                y1={y - 10}
+                x2={x - 10}
+                y2={y + 10}
+                stroke="#DC2626"
+                strokeWidth="3"
+                strokeLinecap="round"
+              />
             </g>
           );
         })}

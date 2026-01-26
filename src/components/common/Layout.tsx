@@ -15,8 +15,11 @@ export function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="bg-blue-600 text-white py-4 px-4 shadow-lg">
-        <h1 className="text-xl font-bold text-center">Basketball Team Manager</h1>
+      <header className="bg-blue-600 text-white py-3 px-4 shadow-lg">
+        <div className="flex items-center justify-center gap-3">
+          <img src="/team-logo.svg" alt="Bucket Ducks" className="w-10 h-10" />
+          <h1 className="text-xl font-bold">Bucket Ducks</h1>
+        </div>
       </header>
 
       {/* Main Content */}

@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
-import type { Game, Player, Quarter, SwapNumber } from '@/types';
+import type { Game, Player, Quarter, SwapNumber, Rotation } from '@/types';
 import { Card } from '../common/Card';
+import { Button } from '../common/Button';
 import { EditableStatRow } from './EditableStatRow';
 import { StatsService } from '@/services/stats';
+import { GameService } from '@/services/game';
 
 interface SwapsOverviewProps {
   game: Game;
   players: Player[];
+  allPlayers?: Player[]; // All team players for attendance editing
   onRefresh: () => void;
 }
 
-export function SwapsOverview({ game, players, onRefresh }: SwapsOverviewProps) {
+export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOverviewProps) {
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
+  const [showRotationEditor, setShowRotationEditor] = useState(false);
+  const [editingRotation, setEditingRotation] = useState<{ quarter: Quarter; swap: SwapNumber } | null>(null);
 
   const handleIncrementStat = (playerId: string, stat: string) => {
     StatsService.incrementStat(game.id, playerId, stat as any);
@@ -27,6 +33,18 @@ export function SwapsOverview({ game, players, onRefresh }: SwapsOverviewProps) 
       });
       onRefresh();
     }
+  };
+
+  const handleToggleAttendance = (playerId: string) => {
+    const currentAttendance = [...game.attendance];
+    const index = currentAttendance.indexOf(playerId);
+    if (index >= 0) {
+      currentAttendance.splice(index, 1);
+    } else {
+      currentAttendance.push(playerId);
+    }
+    GameService.setAttendance(game.id, currentAttendance);
+    onRefresh();
   };
 
   // Get all quarter/swap combinations
@@ -46,6 +64,13 @@ export function SwapsOverview({ game, players, onRefresh }: SwapsOverviewProps) 
       return numA - numB;
     });
 
+  // All players sorted by number for attendance modal
+  const allPlayersSorted = (allPlayers || players).slice().sort((a, b) => {
+    const numA = parseInt(a.number) || 0;
+    const numB = parseInt(b.number) || 0;
+    return numA - numB;
+  });
+
   // Helper to get minutes for a player in a specific quarter/swap
   const getPlayerMinutes = (playerId: string, quarter: Quarter, swap: SwapNumber): number => {
     const rotations = game.rotations.filter(
@@ -61,15 +86,100 @@ export function SwapsOverview({ game, players, onRefresh }: SwapsOverviewProps) 
       .reduce((sum, r) => sum + r.minutes, 0);
   };
 
+  // Count swaps attended (out of 8)
+  const getSwapsAttended = (playerId: string): number => {
+    const swapsPlayed = new Set<string>();
+    game.rotations.forEach(r => {
+      if (r.playersOnCourt.includes(playerId)) {
+        swapsPlayed.add(`${r.quarter}-${r.swap}`);
+      }
+    });
+    return swapsPlayed.size;
+  };
+
+  // Get rotations for a specific quarter/swap
+  const getRotationsForSwap = (quarter: Quarter, swap: SwapNumber): Rotation[] => {
+    return game.rotations.filter(r => r.quarter === quarter && r.swap === swap);
+  };
+
+  // Handle adding a player to a specific swap
+  const handleAddPlayerToSwap = (playerId: string, quarter: Quarter, swap: SwapNumber) => {
+    const existingRotations = getRotationsForSwap(quarter, swap);
+
+    if (existingRotations.length === 0) {
+      // Create new rotation
+      const newRotation: Rotation = {
+        quarter,
+        swap,
+        playersOnCourt: [playerId],
+        minutes: 4,
+      };
+      GameService.addRotation(game.id, newRotation);
+    } else {
+      // Add to existing rotation (if not already there and less than 5 players)
+      const lastRotation = existingRotations[existingRotations.length - 1];
+      if (!lastRotation.playersOnCourt.includes(playerId)) {
+        const updatedPlayers = [...lastRotation.playersOnCourt, playerId].slice(0, 5);
+        GameService.updateRotation(game.id, quarter, swap, { playersOnCourt: updatedPlayers });
+      }
+    }
+    onRefresh();
+  };
+
+  // Handle removing a player from a specific swap
+  const handleRemovePlayerFromSwap = (playerId: string, quarter: Quarter, swap: SwapNumber) => {
+    const existingRotations = getRotationsForSwap(quarter, swap);
+
+    existingRotations.forEach(rotation => {
+      if (rotation.playersOnCourt.includes(playerId)) {
+        const updatedPlayers = rotation.playersOnCourt.filter(id => id !== playerId);
+        if (updatedPlayers.length > 0) {
+          GameService.updateRotation(game.id, quarter, swap, { playersOnCourt: updatedPlayers });
+        } else {
+          // Remove the rotation entirely if no players left
+          const updatedRotations = game.rotations.filter(
+            r => !(r.quarter === quarter && r.swap === swap && r.playersOnCourt.includes(playerId))
+          );
+          GameService.updateGame(game.id, { rotations: updatedRotations });
+        }
+      }
+    });
+    onRefresh();
+  };
+
+  // Handle updating minutes for a swap
+  const handleUpdateSwapMinutes = (quarter: Quarter, swap: SwapNumber, minutes: number) => {
+    GameService.updateRotation(game.id, quarter, swap, { minutes: Math.max(0, Math.min(8, minutes)) });
+    onRefresh();
+  };
+
   const selectedPlayerData = selectedPlayer ? players.find(p => p.id === selectedPlayer) : null;
   const selectedPlayerStats = selectedPlayer ? StatsService.getPlayerGameStats(game.id, selectedPlayer) : null;
 
   return (
     <div className="space-y-4 pb-24">
+      {/* Action buttons */}
+      <div className="flex gap-2 flex-wrap">
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => setShowAttendanceModal(true)}
+        >
+          Edit Attendance
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => setShowRotationEditor(!showRotationEditor)}
+        >
+          {showRotationEditor ? 'Hide Editor' : 'Edit Rotations'}
+        </Button>
+      </div>
+
       <Card className="p-2 sm:p-4">
         <h3 className="font-semibold text-lg mb-2">Quarter & Swap Overview</h3>
         <p className="text-xs text-gray-600 mb-3">
-          Tap a player to edit stats. Minutes shown per swap.
+          Tap a player to edit stats. {showRotationEditor ? 'Click cells to toggle player in/out of swap.' : 'Minutes shown per swap.'}
         </p>
 
         {/* Scrollable table container */}
@@ -120,6 +230,7 @@ export function SwapsOverview({ game, players, onRefresh }: SwapsOverviewProps) 
                   }}
                 >
                   <div className="text-xs">Tot</div>
+                  <div className="text-[10px] text-gray-600">Swaps</div>
                 </th>
               </tr>
             </thead>
@@ -127,6 +238,7 @@ export function SwapsOverview({ game, players, onRefresh }: SwapsOverviewProps) 
               {attendingPlayers.map((player) => {
                 const isSelected = selectedPlayer === player.id;
                 const totalMins = getTotalMinutes(player.id);
+                const swapsAttended = getSwapsAttended(player.id);
 
                 return (
                   <tr
@@ -155,26 +267,41 @@ export function SwapsOverview({ game, players, onRefresh }: SwapsOverviewProps) 
                     {/* Minutes cells for each quarter/swap */}
                     {quarterSwaps.map(({ quarter, swap }) => {
                       const mins = getPlayerMinutes(player.id, quarter, swap);
+                      const isInSwap = mins > 0;
+
                       return (
                         <td
                           key={`${player.id}-q${quarter}-s${swap}`}
                           className={`border-r border-b border-gray-300 px-1 py-1.5 text-center ${
-                            mins > 0 ? 'bg-green-50 text-green-800 font-medium' : 'text-gray-300'
+                            showRotationEditor ? 'cursor-pointer hover:bg-yellow-100' : ''
+                          } ${
+                            isInSwap ? 'bg-green-50 text-green-800 font-medium' : 'text-gray-300'
                           }`}
-                          onClick={() => setSelectedPlayer(player.id)}
+                          onClick={() => {
+                            if (showRotationEditor) {
+                              if (isInSwap) {
+                                handleRemovePlayerFromSwap(player.id, quarter, swap);
+                              } else {
+                                handleAddPlayerToSwap(player.id, quarter, swap);
+                              }
+                            } else {
+                              setSelectedPlayer(player.id);
+                            }
+                          }}
                         >
-                          {mins > 0 ? `${mins}m` : '-'}
+                          {isInSwap ? `${mins}m` : (showRotationEditor ? '+' : '-')}
                         </td>
                       );
                     })}
-                    {/* Total minutes cell */}
+                    {/* Total column */}
                     <td
                       className={`border-b border-gray-400 px-1 py-1.5 text-center font-bold ${
                         totalMins > 0 ? 'bg-blue-50 text-blue-800' : 'text-gray-400'
                       }`}
                       onClick={() => setSelectedPlayer(player.id)}
                     >
-                      {totalMins > 0 ? `${totalMins}` : '0'}
+                      <div>{totalMins}m</div>
+                      <div className="text-[10px] font-normal">{swapsAttended}/8</div>
                     </td>
                   </tr>
                 );
@@ -190,9 +317,119 @@ export function SwapsOverview({ game, players, onRefresh }: SwapsOverviewProps) 
         )}
       </Card>
 
+      {/* Minutes Editor for each swap */}
+      {showRotationEditor && (
+        <Card className="p-3">
+          <h4 className="font-semibold mb-3">Adjust Swap Minutes</h4>
+          <div className="grid grid-cols-4 gap-2">
+            {quarterSwaps.map(({ quarter, swap }) => {
+              const rotations = getRotationsForSwap(quarter, swap);
+              const currentMinutes = rotations.length > 0 ? rotations[0].minutes : 4;
+
+              return (
+                <div key={`mins-q${quarter}-s${swap}`} className="text-center">
+                  <div className="text-xs font-medium mb-1">Q{quarter}S{swap}</div>
+                  <div className="flex items-center justify-center gap-1">
+                    <button
+                      className="w-6 h-6 bg-gray-200 rounded text-sm font-bold"
+                      onClick={() => handleUpdateSwapMinutes(quarter, swap, currentMinutes - 1)}
+                    >
+                      -
+                    </button>
+                    <span className="w-6 text-center text-sm">{currentMinutes}</span>
+                    <button
+                      className="w-6 h-6 bg-gray-200 rounded text-sm font-bold"
+                      onClick={() => handleUpdateSwapMinutes(quarter, swap, currentMinutes + 1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Attendance Modal */}
+      {showAttendanceModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 max-w-md w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Edit Attendance</h3>
+              <button
+                onClick={() => setShowAttendanceModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Toggle players to mark them as attending or not attending this game.
+            </p>
+            <div className="space-y-2">
+              {allPlayersSorted.map((player) => {
+                const isAttending = game.attendance.includes(player.id);
+                const swapsPlayed = getSwapsAttended(player.id);
+
+                return (
+                  <button
+                    key={player.id}
+                    type="button"
+                    onClick={() => handleToggleAttendance(player.id)}
+                    className={`w-full p-3 rounded-lg border-2 text-left transition-all ${
+                      isAttending
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                          isAttending
+                            ? 'border-green-500 bg-green-500'
+                            : 'border-gray-300'
+                        }`}
+                      >
+                        {isAttending && (
+                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path
+                              fillRule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-semibold">#{player.number} {player.name}</div>
+                        {isAttending && swapsPlayed > 0 && (
+                          <div className="text-xs text-gray-500">
+                            {swapsPlayed}/8 swaps played
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <Button
+              onClick={() => setShowAttendanceModal(false)}
+              className="w-full mt-4"
+            >
+              Done
+            </Button>
+          </div>
+        </div>
+      )}
+
       {selectedPlayer && selectedPlayerData && selectedPlayerStats && (() => {
         // Extract selectedPlayer to a const so TypeScript knows it's not null in callbacks
         const playerId = selectedPlayer;
+        const swapsPlayed = getSwapsAttended(playerId);
 
         return (
           <Card className="border-2 border-blue-500">
@@ -204,7 +441,7 @@ export function SwapsOverview({ game, players, onRefresh }: SwapsOverviewProps) 
                 <div>
                   <h3 className="font-semibold text-lg">{selectedPlayerData.name}</h3>
                   <p className="text-sm text-gray-600">
-                    {StatsService.calculatePlayTime(game.id, playerId)} minutes played
+                    {getTotalMinutes(playerId)} min played ({swapsPlayed}/8 swaps)
                   </p>
                 </div>
               </div>

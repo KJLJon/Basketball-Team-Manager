@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="95" fill="#F5D76E" stroke="#1E3A5F" stroke-width="4"/>
+
+  <!-- Basketball hoop backboard -->
+  <rect x="135" y="30" width="8" height="45" fill="#87CEEB" stroke="#1E3A5F" stroke-width="2"/>
+  <rect x="115" y="60" width="50" height="35" fill="#F5F5DC" stroke="#1E3A5F" stroke-width="2"/>
+
+  <!-- Basketball net -->
+  <path d="M125 95 Q130 110, 125 125 M140 95 Q140 110, 140 125 M155 95 Q150 110, 155 125"
+        stroke="#1E3A5F" stroke-width="2" fill="none"/>
+  <ellipse cx="140" cy="95" rx="20" ry="8" fill="none" stroke="#1E3A5F" stroke-width="2"/>
+
+  <!-- Duck body -->
+  <ellipse cx="85" cy="130" rx="45" ry="35" fill="#F5F5DC" stroke="#1E3A5F" stroke-width="2"/>
+
+  <!-- Duck wing with jersey -->
+  <ellipse cx="70" cy="130" rx="25" ry="20" fill="#1E3A5F"/>
+
+  <!-- Duck head -->
+  <circle cx="95" cy="80" r="30" fill="#F5F5DC" stroke="#1E3A5F" stroke-width="2"/>
+
+  <!-- Duck hair/feathers -->
+  <path d="M85 55 Q90 45, 100 50 Q105 40, 115 48" fill="#F5F5DC" stroke="#1E3A5F" stroke-width="2"/>
+
+  <!-- Duck beak -->
+  <path d="M115 85 L140 82 L140 92 L115 90 Z" fill="#FF7F00" stroke="#1E3A5F" stroke-width="2"/>
+
+  <!-- Duck eye -->
+  <circle cx="102" cy="75" r="6" fill="#1E3A5F"/>
+  <circle cx="104" cy="73" r="2" fill="white"/>
+
+  <!-- Eyebrow (determined look) -->
+  <path d="M95 65 L110 68" stroke="#1E3A5F" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Basketball in wing/hand -->
+  <circle cx="50" cy="105" r="18" fill="#FF7F00" stroke="#1E3A5F" stroke-width="2"/>
+  <path d="M32 105 Q50 95, 68 105" stroke="#1E3A5F" stroke-width="1.5" fill="none"/>
+  <path d="M32 105 Q50 115, 68 105" stroke="#1E3A5F" stroke-width="1.5" fill="none"/>
+  <line x1="50" y1="87" x2="50" y2="123" stroke="#1E3A5F" stroke-width="1.5"/>
+
+  <!-- Team name banner -->
+  <rect x="20" y="160" width="160" height="35" rx="5" fill="#1E3A5F"/>
+  <text x="100" y="175" font-family="Arial Black, sans-serif" font-size="14" font-weight="bold"
+        fill="#F5F5DC" text-anchor="middle">BUCKET</text>
+  <text x="100" y="190" font-family="Arial Black, sans-serif" font-size="14" font-weight="bold"
+        fill="#FF7F00" text-anchor="middle">DUCKS</text>
+</svg>
