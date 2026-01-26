@@ -262,53 +262,63 @@ export class GameService {
       throw new Error('Rotation not found');
     }
 
-    const rotation = game.rotations[rotationIndex];
+    const oldRotation = game.rotations[rotationIndex];
 
-    if (!rotation.playersOnCourt.includes(playerOutId)) {
+    if (!oldRotation.playersOnCourt.includes(playerOutId)) {
       throw new Error('Player to substitute out is not on court');
     }
 
     // Initialize playerMinutes if not present (migration from old format)
-    if (!rotation.playerMinutes) {
-      rotation.playerMinutes = {};
-      rotation.playersOnCourt.forEach(pid => {
-        rotation.playerMinutes![pid] = rotation.minutes || 4;
+    let currentPlayerMinutes = oldRotation.playerMinutes;
+    if (!currentPlayerMinutes) {
+      currentPlayerMinutes = {};
+      oldRotation.playersOnCourt.forEach(pid => {
+        currentPlayerMinutes![pid] = oldRotation.minutes || 4;
       });
     }
 
     // Get current player's time
-    const currentPlayerTime = rotation.playerMinutes[playerOutId] || 0;
+    const currentPlayerTime = currentPlayerMinutes[playerOutId] || 0;
 
     // Calculate time exchanged: floor(currentPlayerTime / 2), clamped between 1-4
     const timeExchanged = Math.max(1, Math.min(4, Math.floor(currentPlayerTime / 2)));
 
     // Update times for both players
     const newPlayerOutTime = currentPlayerTime - timeExchanged;
-    const newPlayerInTime = (rotation.playerMinutes[playerInId] || 0) + timeExchanged;
+    const newPlayerInTime = (currentPlayerMinutes[playerInId] || 0) + timeExchanged;
 
     // Cap the new player's time at 4 minutes max
     const cappedPlayerInTime = Math.min(4, newPlayerInTime);
 
-    // Update player times in rotation
-    rotation.playerMinutes[playerOutId] = newPlayerOutTime;
-    rotation.playerMinutes[playerInId] = cappedPlayerInTime;
+    // Create new playerMinutes object with updated times
+    const newPlayerMinutes = { ...currentPlayerMinutes };
+    newPlayerMinutes[playerOutId] = newPlayerOutTime;
+    newPlayerMinutes[playerInId] = cappedPlayerInTime;
 
-    // Update playersOnCourt list
-    if (!rotation.playersOnCourt.includes(playerInId)) {
-      rotation.playersOnCourt.push(playerInId);
+    // Create new playersOnCourt array
+    let newPlayersOnCourt = [...oldRotation.playersOnCourt];
+
+    // Add player in if not already on court
+    if (!newPlayersOnCourt.includes(playerInId)) {
+      newPlayersOnCourt.push(playerInId);
     }
 
     // If player out has 0 minutes, remove them from court
     if (newPlayerOutTime === 0) {
-      rotation.playersOnCourt = rotation.playersOnCourt.filter(
-        pid => pid !== playerOutId
-      );
-      delete rotation.playerMinutes[playerOutId];
+      newPlayersOnCourt = newPlayersOnCourt.filter(pid => pid !== playerOutId);
+      delete newPlayerMinutes[playerOutId];
     }
 
-    // Update the game
+    // Create new rotation object (immutable update)
+    const newRotation = {
+      ...oldRotation,
+      playersOnCourt: newPlayersOnCourt,
+      playerMinutes: newPlayerMinutes,
+    };
+
+    // Update the game with new rotation
     const rotations = [...game.rotations];
-    rotations[rotationIndex] = rotation;
+    rotations[rotationIndex] = newRotation;
 
     return this.updateGame(gameId, { rotations });
   }
