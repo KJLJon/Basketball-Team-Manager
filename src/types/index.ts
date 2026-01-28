@@ -48,6 +48,7 @@ export interface Game {
   currentQuarter?: Quarter;
   currentSwap?: SwapNumber;
   precomputedOptimization?: GameRosterOptimization; // Whole-game rotation optimization (computed at start)
+  manualRotations?: ManualRotationSelection; // Manual rotation selections for "manual" algorithm
   createdAt: number;
 }
 
@@ -59,7 +60,13 @@ export interface PlayerSeasonStats extends PlayerStats {
   fieldGoalPercentage: number;
 }
 
-export type RotationAlgorithm = 'simple' | 'weighted' | 'preferred';
+export type RotationAlgorithm = 'simple' | 'weighted' | 'preferred' | 'manual';
+
+// Manual rotation selections for a game (stored per game)
+export interface ManualRotationSelection {
+  // Key is "Q{quarter}S{swap}", value is array of player IDs
+  [rotationKey: string]: string[];
+}
 
 export interface AppSettings {
   rotationAlgorithm: RotationAlgorithm;

@@ -1,21 +1,33 @@
-import React, { useState, useMemo } from 'react';
-import type { Game, Player, Quarter, SwapNumber } from '@/types';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import type { Game, Player, Quarter, SwapNumber, RotationAlgorithm, ManualRotationSelection } from '@/types';
 import { Card } from '../common/Card';
 import { RotationService } from '@/services/rotation';
 import { StorageService } from '@/services/storage';
 import { StatsService } from '@/services/stats';
+import { GameService } from '@/services/game';
 
 interface FullScheduleProps {
   game: Game;
   players: Player[];
+  onGameUpdate?: () => void; // Callback to refresh game data after manual changes
 }
 
-export function FullSchedule({ game, players }: FullScheduleProps) {
+export function FullSchedule({ game, players, onGameUpdate }: FullScheduleProps) {
   const attendingPlayers = players.filter(p => game.attendance.includes(p.id));
-  const [algorithm, setAlgorithm] = useState<'simple' | 'weighted' | 'preferred'>(
+  const [algorithm, setAlgorithm] = useState<RotationAlgorithm>(
     StorageService.getRotationAlgorithm()
   );
   const [recalcCounter, setRecalcCounter] = useState(0); // Force recalculation trigger
+
+  // Local state for manual selections (synced with game.manualRotations)
+  const [manualSelections, setManualSelections] = useState<ManualRotationSelection>(
+    game.manualRotations || {}
+  );
+
+  // Track if manual mode has been initialized with preferred algorithm
+  const [manualInitialized, setManualInitialized] = useState(
+    Object.keys(game.manualRotations || {}).length > 0
+  );
 
   // Get all quarter/swap combinations
   const quarterSwaps: Array<{ quarter: Quarter; swap: SwapNumber; rotationNum: number }> = [];
@@ -34,9 +46,89 @@ export function FullSchedule({ game, players }: FullScheduleProps) {
     ? (game.currentQuarter - 1) * 2 + game.currentSwap
     : 0;
 
+  // Generate the "preferred" schedule (used as baseline for manual mode)
+  const preferredSchedule = useMemo(() => {
+    const attendingPlayerIds = attendingPlayers.map(p => p.id);
+    return RotationService.optimizeGameRosterPreferred(game.id, attendingPlayerIds);
+  }, [game.id, attendingPlayers]);
+
+  // Initialize manual selections from preferred when switching to manual mode
+  useEffect(() => {
+    if (algorithm === 'manual' && !manualInitialized) {
+      const newManualSelections: ManualRotationSelection = {};
+
+      quarterSwaps.forEach(({ quarter, swap, rotationNum }) => {
+        const key = `Q${quarter}S${swap}`;
+        // Check if this rotation already exists in the game (actual)
+        const existingRotation = game.rotations.find(
+          r => r.quarter === quarter && r.swap === swap
+        );
+
+        if (existingRotation) {
+          // Use actual rotation
+          newManualSelections[key] = existingRotation.playersOnCourt;
+        } else {
+          // Use preferred algorithm's recommendation
+          const preferredRotation = preferredSchedule.rotations.find(
+            r => r.quarter === quarter && r.swap === swap
+          );
+          newManualSelections[key] = preferredRotation?.playerIds || [];
+        }
+      });
+
+      setManualSelections(newManualSelections);
+      setManualInitialized(true);
+
+      // Persist to game storage
+      GameService.setManualRotations(game.id, newManualSelections);
+      onGameUpdate?.();
+    }
+  }, [algorithm, manualInitialized, preferredSchedule, game.rotations, game.id, quarterSwaps, onGameUpdate]);
+
+  // Sync manual selections when game.manualRotations changes externally
+  useEffect(() => {
+    if (game.manualRotations && Object.keys(game.manualRotations).length > 0) {
+      setManualSelections(game.manualRotations);
+      setManualInitialized(true);
+    }
+  }, [game.manualRotations]);
+
   // Generate full schedule using optimization
   const fullSchedule = useMemo(() => {
     const attendingPlayerIds = attendingPlayers.map(p => p.id);
+
+    // For manual mode, use the manual selections
+    if (algorithm === 'manual') {
+      return quarterSwaps.map(({ quarter, swap, rotationNum }) => {
+        const key = `Q${quarter}S${swap}`;
+        // Check if this rotation already exists in the game (actual played rotation)
+        const existingRotation = game.rotations.find(
+          r => r.quarter === quarter && r.swap === swap
+        );
+
+        if (existingRotation) {
+          // Use actual rotation from game (can't change past rotations)
+          return {
+            quarter,
+            swap,
+            rotationNum,
+            playerIds: existingRotation.playersOnCourt,
+            isActual: true,
+          };
+        } else {
+          // Use manual selection
+          return {
+            quarter,
+            swap,
+            rotationNum,
+            playerIds: manualSelections[key] || [],
+            isActual: false,
+          };
+        }
+      });
+    }
+
+    // For other algorithms, use optimization
     const optimization = algorithm === 'weighted'
       ? RotationService.optimizeGameRosterWeighted(game.id, attendingPlayerIds)
       : algorithm === 'preferred'
@@ -73,7 +165,7 @@ export function FullSchedule({ game, players }: FullScheduleProps) {
         };
       }
     });
-  }, [game.id, game.rotations.length, JSON.stringify(game.rotations), attendingPlayers, algorithm, recalcCounter]);
+  }, [game.id, game.rotations.length, JSON.stringify(game.rotations), attendingPlayers, algorithm, recalcCounter, manualSelections]);
 
   // Calculate player stats with projections including current scheduled game
   const playerProjectedStats = useMemo(() => {
@@ -125,18 +217,58 @@ export function FullSchedule({ game, players }: FullScheduleProps) {
   }, [attendingPlayers, fullSchedule, game.stats]);
 
   const handleAlgorithmToggle = () => {
-    const newAlgorithm = algorithm === 'simple'
+    const newAlgorithm: RotationAlgorithm = algorithm === 'simple'
       ? 'weighted'
       : algorithm === 'weighted'
       ? 'preferred'
+      : algorithm === 'preferred'
+      ? 'manual'
       : 'simple';
     setAlgorithm(newAlgorithm);
     StorageService.setRotationAlgorithm(newAlgorithm);
+
+    // Reset manual initialization when switching away from manual
+    if (algorithm === 'manual' && newAlgorithm !== 'manual') {
+      // Keep the manual selections stored in case user switches back
+    }
   };
 
   const handleRecalculate = () => {
+    // Don't recalculate in manual mode
+    if (algorithm === 'manual') return;
     setRecalcCounter(prev => prev + 1);
   };
+
+  // Handle clicking a cell in manual mode to toggle a player
+  const handleCellClick = useCallback((quarter: Quarter, swap: SwapNumber, playerId: string, isActual: boolean, rotationNum: number) => {
+    // Only allow editing in manual mode for future rotations
+    if (algorithm !== 'manual') return;
+    if (isActual) return; // Can't edit actual/past rotations
+    if (rotationNum <= currentRotationNum) return; // Can't edit current or past rotations
+
+    const key = `Q${quarter}S${swap}`;
+    const currentPlayers = manualSelections[key] || [];
+
+    let newPlayers: string[];
+    if (currentPlayers.includes(playerId)) {
+      // Remove player
+      newPlayers = currentPlayers.filter(id => id !== playerId);
+    } else {
+      // Add player
+      newPlayers = [...currentPlayers, playerId];
+    }
+
+    const newSelections = {
+      ...manualSelections,
+      [key]: newPlayers,
+    };
+
+    setManualSelections(newSelections);
+
+    // Persist to game storage
+    GameService.setManualRotations(game.id, newSelections);
+    onGameUpdate?.();
+  }, [algorithm, currentRotationNum, manualSelections, game.id, onGameUpdate]);
 
   // Sort players by name
   const sortedPlayers = [...attendingPlayers].sort((a, b) => a.name.localeCompare(b.name));
@@ -156,20 +288,29 @@ export function FullSchedule({ game, players }: FullScheduleProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 pt-2 border-t border-blue-200">
+        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-blue-200">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-blue-900">Algorithm:</span>
             <button
               onClick={handleAlgorithmToggle}
-              className="px-3 py-1 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+              className={`px-3 py-1 text-sm rounded text-white transition-colors ${
+                algorithm === 'manual'
+                  ? 'bg-orange-600 hover:bg-orange-700'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
             >
-              {algorithm === 'simple' ? 'Simple' : algorithm === 'weighted' ? 'Weighted' : 'Preferred'}
+              {algorithm === 'simple' ? 'Simple' : algorithm === 'weighted' ? 'Weighted' : algorithm === 'preferred' ? 'Preferred' : 'Manual'}
             </button>
           </div>
           <button
             onClick={handleRecalculate}
-            className="px-3 py-1 text-sm rounded bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center gap-1"
-            title="Recalculate schedule based on current game state"
+            disabled={algorithm === 'manual'}
+            className={`px-3 py-1 text-sm rounded text-white transition-colors flex items-center gap-1 ${
+              algorithm === 'manual'
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-green-600 hover:bg-green-700'
+            }`}
+            title={algorithm === 'manual' ? 'Recalculate disabled in manual mode' : 'Recalculate schedule based on current game state'}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -177,6 +318,15 @@ export function FullSchedule({ game, players }: FullScheduleProps) {
             Recalculate
           </button>
         </div>
+
+        {algorithm === 'manual' && (
+          <div className="mt-3 pt-2 border-t border-orange-200 bg-orange-50 -mx-4 -mb-4 px-4 pb-4 rounded-b-lg">
+            <p className="text-xs text-orange-800">
+              <strong>Manual Mode:</strong> Click cells to toggle players in/out for upcoming rotations.
+              Changes are saved automatically.
+            </p>
+          </div>
+        )}
       </Card>
 
       {/* Table View */}
@@ -239,6 +389,9 @@ export function FullSchedule({ game, players }: FullScheduleProps) {
 
                     const isPast = rotationNum < currentRotationNum;
                     const isCurrent = rotationNum === currentRotationNum;
+                    const isFuture = rotationNum > currentRotationNum;
+                    const isEditable = algorithm === 'manual' && isFuture && !isActual;
+
                     const bgColor = isPast
                       ? 'bg-green-100'
                       : isCurrent
@@ -248,7 +401,12 @@ export function FullSchedule({ game, players }: FullScheduleProps) {
                     return (
                       <td
                         key={`cell-${player.id}-q${quarter}s${swap}`}
-                        className={`border border-gray-300 p-2 text-center ${bgColor}`}
+                        onClick={() => handleCellClick(quarter, swap, player.id, isActual, rotationNum)}
+                        className={`border border-gray-300 p-2 text-center ${bgColor} ${
+                          isEditable
+                            ? 'cursor-pointer hover:bg-orange-100 active:bg-orange-200'
+                            : ''
+                        }`}
                       >
                         {isInSwap && (
                           <span className="text-lg font-bold text-gray-800">✓</span>

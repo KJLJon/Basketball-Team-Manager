@@ -1,4 +1,4 @@
-import type { Game, GameStatus, Quarter, SwapNumber, Rotation } from '@/types';
+import type { Game, GameStatus, Quarter, SwapNumber, Rotation, ManualRotationSelection } from '@/types';
 import { StorageService } from './storage';
 import { PlayerService } from './player';
 
@@ -493,5 +493,57 @@ export class GameService {
       StorageService.saveGames(games);
       console.log('Migrated games from old minutes format to playerMinutes format');
     }
+  }
+
+  /**
+   * Get manual rotation selections for a game.
+   */
+  static getManualRotations(gameId: string): ManualRotationSelection {
+    const game = this.getGameById(gameId);
+    return game?.manualRotations || {};
+  }
+
+  /**
+   * Set manual rotation selections for a game.
+   */
+  static setManualRotations(gameId: string, manualRotations: ManualRotationSelection): Game {
+    return this.updateGame(gameId, { manualRotations });
+  }
+
+  /**
+   * Toggle a player in a manual rotation slot.
+   * If player is in the rotation, remove them. If not, add them.
+   */
+  static toggleManualRotationPlayer(
+    gameId: string,
+    quarter: Quarter,
+    swap: SwapNumber,
+    playerId: string
+  ): Game {
+    const game = this.getGameById(gameId);
+    if (!game) {
+      throw new Error('Game not found');
+    }
+
+    const key = `Q${quarter}S${swap}`;
+    const manualRotations = { ...(game.manualRotations || {}) };
+    const currentPlayers = manualRotations[key] || [];
+
+    if (currentPlayers.includes(playerId)) {
+      // Remove player
+      manualRotations[key] = currentPlayers.filter(id => id !== playerId);
+    } else {
+      // Add player
+      manualRotations[key] = [...currentPlayers, playerId];
+    }
+
+    return this.updateGame(gameId, { manualRotations });
+  }
+
+  /**
+   * Clear all manual rotation selections for a game.
+   */
+  static clearManualRotations(gameId: string): Game {
+    return this.updateGame(gameId, { manualRotations: {} });
   }
 }

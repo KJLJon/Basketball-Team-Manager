@@ -308,6 +308,7 @@ export function GameDay({ game, players, onRefresh }: GameDayProps) {
           <FullSchedule
             game={game}
             players={attendingPlayers}
+            onGameUpdate={onRefresh}
           />
         )}
 
