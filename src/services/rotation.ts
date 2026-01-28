@@ -250,7 +250,7 @@ export class RotationService {
 
   /**
    * Get rotation recommendations based on currently selected algorithm.
-   * Checks settings to determine whether to use simple, weighted, or preferred algorithm.
+   * Checks settings to determine whether to use simple, weighted, preferred, or manual algorithm.
    */
   static getRecommendations(
     gameId: string,
@@ -258,6 +258,11 @@ export class RotationService {
     excludePlayerIds: string[] = []
   ): RotationRecommendation[] {
     const algorithm = StorageService.getRotationAlgorithm();
+
+    if (algorithm === 'manual') {
+      // Use manual selections for the current/next rotation
+      return this.getManualRecommendations(gameId, count, excludePlayerIds);
+    }
 
     if (algorithm === 'weighted') {
       // Use weighted priority algorithm
@@ -289,6 +294,61 @@ export class RotationService {
 
     // Default: use simple algorithm
     return this.recommendPlayers(gameId, count, excludePlayerIds);
+  }
+
+  /**
+   * Get recommendations from manual selections for the current rotation.
+   * Falls back to preferred algorithm if no manual selections exist.
+   */
+  static getManualRecommendations(
+    gameId: string,
+    count: number = 5,
+    excludePlayerIds: string[] = []
+  ): RotationRecommendation[] {
+    const game = StorageService.getGames().find(g => g.id === gameId);
+    if (!game) {
+      throw new Error('Game not found');
+    }
+
+    const players = StorageService.getPlayers();
+
+    // Get current quarter and swap
+    const quarter = game.currentQuarter || 1;
+    const swap = game.currentSwap || 1;
+    const key = `Q${quarter}S${swap}`;
+
+    // Check if we have manual selections for this rotation
+    const manualPlayers = game.manualRotations?.[key];
+
+    if (!manualPlayers || manualPlayers.length === 0) {
+      // Fall back to preferred algorithm if no manual selections
+      return this.recommendPlayersPreferred(gameId, count, excludePlayerIds);
+    }
+
+    // Filter out excluded players and return as recommendations
+    const recommendations: RotationRecommendation[] = [];
+
+    for (const playerId of manualPlayers) {
+      if (excludePlayerIds.includes(playerId)) continue;
+
+      const player = players.find(p => p.id === playerId);
+      if (!player) continue;
+
+      const seasonStats = StatsService.getPlayerSeasonStats(playerId);
+      const currentGameMinutes = StatsService.calculatePlayTime(gameId, playerId);
+
+      recommendations.push({
+        playerId,
+        playerName: player.name,
+        playerNumber: player.number,
+        normalizedPlayTime: seasonStats.normalizedPlayTime,
+        totalPlayTime: currentGameMinutes,
+        gamesAttended: seasonStats.gamesAttended,
+        reason: 'Manual selection',
+      });
+    }
+
+    return recommendations.slice(0, count);
   }
 
   /**
