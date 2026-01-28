@@ -25,6 +25,8 @@ export function RotationSelector({ game, players, onRefresh, onNextSwap, onRotat
       ? 'weighted'
       : algorithm === 'weighted'
       ? 'preferred'
+      : algorithm === 'preferred'
+      ? 'manual'
       : 'simple';
     setAlgorithm(newAlgorithm);
     StorageService.setRotationAlgorithm(newAlgorithm);
@@ -134,10 +136,12 @@ export function RotationSelector({ game, players, onRefresh, onNextSwap, onRotat
                   ? 'bg-blue-600 text-white'
                   : algorithm === 'weighted'
                   ? 'bg-purple-600 text-white'
-                  : 'bg-green-600 text-white'
+                  : algorithm === 'preferred'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-orange-600 text-white'
               }`}
             >
-              {algorithm === 'simple' ? 'Simple (Fair)' : algorithm === 'weighted' ? 'Weighted (Advanced)' : 'Preferred'}
+              {algorithm === 'simple' ? 'Simple (Fair)' : algorithm === 'weighted' ? 'Weighted (Advanced)' : algorithm === 'preferred' ? 'Preferred' : 'Manual'}
             </button>
           </div>
 
