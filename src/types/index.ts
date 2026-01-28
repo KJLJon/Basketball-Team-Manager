@@ -59,7 +59,7 @@ export interface PlayerSeasonStats extends PlayerStats {
   fieldGoalPercentage: number;
 }
 
-export type RotationAlgorithm = 'simple' | 'weighted';
+export type RotationAlgorithm = 'simple' | 'weighted' | 'preferred';
 
 export interface AppSettings {
   rotationAlgorithm: RotationAlgorithm;

@@ -21,7 +21,11 @@ export function RotationSelector({ game, players, onRefresh, onNextSwap, onRotat
   const [algorithm, setAlgorithm] = useState<RotationAlgorithm>(StorageService.getRotationAlgorithm());
 
   const toggleAlgorithm = () => {
-    const newAlgorithm: RotationAlgorithm = algorithm === 'simple' ? 'weighted' : 'simple';
+    const newAlgorithm: RotationAlgorithm = algorithm === 'simple'
+      ? 'weighted'
+      : algorithm === 'weighted'
+      ? 'preferred'
+      : 'simple';
     setAlgorithm(newAlgorithm);
     StorageService.setRotationAlgorithm(newAlgorithm);
     // Force re-render of recommendations
@@ -128,10 +132,12 @@ export function RotationSelector({ game, players, onRefresh, onNextSwap, onRotat
               className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
                 algorithm === 'simple'
                   ? 'bg-blue-600 text-white'
-                  : 'bg-purple-600 text-white'
+                  : algorithm === 'weighted'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-green-600 text-white'
               }`}
             >
-              {algorithm === 'simple' ? 'Simple (Fair)' : 'Weighted (Advanced)'}
+              {algorithm === 'simple' ? 'Simple (Fair)' : algorithm === 'weighted' ? 'Weighted (Advanced)' : 'Preferred'}
             </button>
           </div>
 

@@ -11,7 +11,7 @@ interface FullScheduleProps {
 
 export function FullSchedule({ game, players }: FullScheduleProps) {
   const attendingPlayers = players.filter(p => game.attendance.includes(p.id));
-  const [algorithm, setAlgorithm] = useState<'simple' | 'weighted'>(
+  const [algorithm, setAlgorithm] = useState<'simple' | 'weighted' | 'preferred'>(
     StorageService.getRotationAlgorithm()
   );
 
@@ -37,6 +37,8 @@ export function FullSchedule({ game, players }: FullScheduleProps) {
     const attendingPlayerIds = attendingPlayers.map(p => p.id);
     const optimization = algorithm === 'weighted'
       ? RotationService.optimizeGameRosterWeighted(game.id, attendingPlayerIds)
+      : algorithm === 'preferred'
+      ? RotationService.optimizeGameRosterPreferred(game.id, attendingPlayerIds)
       : RotationService.optimizeGameRoster(game.id, attendingPlayerIds);
 
     // Merge with existing rotations from the game
@@ -72,7 +74,11 @@ export function FullSchedule({ game, players }: FullScheduleProps) {
   }, [game, attendingPlayers, algorithm, quarterSwaps]);
 
   const handleAlgorithmToggle = () => {
-    const newAlgorithm = algorithm === 'simple' ? 'weighted' : 'simple';
+    const newAlgorithm = algorithm === 'simple'
+      ? 'weighted'
+      : algorithm === 'weighted'
+      ? 'preferred'
+      : 'simple';
     setAlgorithm(newAlgorithm);
     StorageService.setRotationAlgorithm(newAlgorithm);
   };
@@ -101,7 +107,7 @@ export function FullSchedule({ game, players }: FullScheduleProps) {
             onClick={handleAlgorithmToggle}
             className="px-3 py-1 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
           >
-            {algorithm === 'simple' ? 'Simple' : 'Weighted'}
+            {algorithm === 'simple' ? 'Simple' : algorithm === 'weighted' ? 'Weighted' : 'Preferred'}
           </button>
           <span className="text-xs text-blue-700">
             (Click to toggle)
