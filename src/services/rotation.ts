@@ -101,8 +101,156 @@ export class RotationService {
   }
 
   /**
+   * Recommends players using the "preferred" algorithm based on:
+   * 1. Current game time (shortest first)
+   * 2. Normalized time per swap in previous games (lowest first)
+   * 3. Total previous swaps (most first)
+   * 4. Combined normalized time (current + previous)
+   * 5. Jersey number (lowest first)
+   */
+  static recommendPlayersPreferred(
+    gameId: string,
+    count: number = 5,
+    excludePlayerIds: string[] = []
+  ): RotationRecommendation[] {
+    const game = StorageService.getGames().find(g => g.id === gameId);
+    if (!game) {
+      throw new Error('Game not found');
+    }
+
+    const players = StorageService.getPlayers();
+    const allGames = StorageService.getGames();
+    const attendingPlayerIds = game.attendance;
+
+    interface PlayerPreferredData {
+      playerId: string;
+      playerName: string;
+      playerNumber: string;
+      currentGameTime: number;
+      currentGameSwaps: number;
+      previousGames: Array<{ time: number; swaps: number }>;
+      jerseyNumber: number;
+    }
+
+    const playerDataList: PlayerPreferredData[] = [];
+
+    for (const playerId of attendingPlayerIds) {
+      // Skip players in exclude list
+      if (excludePlayerIds.includes(playerId)) {
+        continue;
+      }
+
+      const player = players.find(p => p.id === playerId);
+      if (!player) continue;
+
+      // Current game data
+      const currentGameTime = StatsService.calculatePlayTime(gameId, playerId);
+      const currentGameSwaps = game.stats[playerId]?.swapsAttended ?? 8;
+
+      // Previous games data (all games except current)
+      const previousGames: Array<{ time: number; swaps: number }> = [];
+      for (const g of allGames) {
+        // Skip current game
+        if (g.id === gameId) continue;
+
+        // Only include games where player attended
+        if (g.attendance.includes(playerId)) {
+          const time = StatsService.calculatePlayTime(g.id, playerId);
+          const swaps = g.stats[playerId]?.swapsAttended ?? 8;
+          previousGames.push({ time, swaps });
+        }
+      }
+
+      // Parse jersey number as integer
+      const jerseyNumber = parseInt(player.number) || 999;
+
+      playerDataList.push({
+        playerId,
+        playerName: player.name,
+        playerNumber: player.number,
+        currentGameTime,
+        currentGameSwaps,
+        previousGames,
+        jerseyNumber,
+      });
+    }
+
+    // Sort according to preferred algorithm
+    playerDataList.sort((a, b) => {
+      // 1. Compare current game time (shortest first)
+      if (a.currentGameTime !== b.currentGameTime) {
+        return a.currentGameTime - b.currentGameTime;
+      }
+
+      // 2. Compare normalized time per swap in previous games (lowest first)
+      const aPrevSwaps = a.previousGames.reduce((sum, game) => sum + game.swaps, 0);
+      const bPrevSwaps = b.previousGames.reduce((sum, game) => sum + game.swaps, 0);
+      const aPrevTime = a.previousGames.reduce((sum, game) => sum + game.time, 0);
+      const bPrevTime = b.previousGames.reduce((sum, game) => sum + game.time, 0);
+
+      const aNormalized = aPrevSwaps > 0 ? aPrevTime / aPrevSwaps : Infinity;
+      const bNormalized = bPrevSwaps > 0 ? bPrevTime / bPrevSwaps : Infinity;
+
+      if (aNormalized !== bNormalized) {
+        return aNormalized - bNormalized;
+      }
+
+      // 3. Compare total previous swaps (most first)
+      if (aPrevSwaps !== bPrevSwaps) {
+        return bPrevSwaps - aPrevSwaps;
+      }
+
+      // 4. Compare combined normalized time
+      const aTotalSwaps = aPrevSwaps + a.currentGameSwaps;
+      const bTotalSwaps = bPrevSwaps + b.currentGameSwaps;
+      const aTotalTime = aPrevTime + a.currentGameTime;
+      const bTotalTime = bPrevTime + b.currentGameTime;
+
+      const aCombinedNormalized = aTotalSwaps > 0 ? aTotalTime / aTotalSwaps : Infinity;
+      const bCombinedNormalized = bTotalSwaps > 0 ? bTotalTime / bTotalSwaps : Infinity;
+
+      if (aCombinedNormalized !== bCombinedNormalized) {
+        return aCombinedNormalized - bCombinedNormalized;
+      }
+
+      // 5. Compare jersey numbers (lowest first)
+      return a.jerseyNumber - b.jerseyNumber;
+    });
+
+    // Convert to RotationRecommendation format
+    const recommendations: RotationRecommendation[] = playerDataList.map(data => {
+      const prevSwaps = data.previousGames.reduce((sum, g) => sum + g.swaps, 0);
+      const prevTime = data.previousGames.reduce((sum, g) => sum + g.time, 0);
+      const totalSwaps = prevSwaps + data.currentGameSwaps;
+      const totalTime = prevTime + data.currentGameTime;
+      const normalizedTime = totalSwaps > 0 ? totalTime / totalSwaps : 0;
+
+      let reason = '';
+      if (data.currentGameTime === 0 && prevTime === 0) {
+        reason = 'Has not played yet';
+      } else if (data.currentGameTime < 8) {
+        reason = `Current: ${data.currentGameTime} min (${normalizedTime.toFixed(1)} min/swap avg)`;
+      } else {
+        reason = `${normalizedTime.toFixed(1)} min/swap average`;
+      }
+
+      return {
+        playerId: data.playerId,
+        playerName: data.playerName,
+        playerNumber: data.playerNumber,
+        normalizedPlayTime: normalizedTime,
+        totalPlayTime: totalTime,
+        gamesAttended: data.previousGames.length + (data.currentGameSwaps > 0 ? 1 : 0),
+        reason,
+      };
+    });
+
+    return recommendations.slice(0, count);
+  }
+
+  /**
    * Get rotation recommendations based on currently selected algorithm.
-   * Checks settings to determine whether to use simple or weighted algorithm.
+   * Checks settings to determine whether to use simple, weighted, or preferred algorithm.
    */
   static getRecommendations(
     gameId: string,
@@ -132,6 +280,11 @@ export class RotationService {
         gamesAttended: p.factors.gamesAttendedTotal,
         reason: p.notes,
       }));
+    }
+
+    if (algorithm === 'preferred') {
+      // Use preferred algorithm
+      return this.recommendPlayersPreferred(gameId, count, excludePlayerIds);
     }
 
     // Default: use simple algorithm
@@ -653,6 +806,217 @@ export class RotationService {
       const topPlayer = selectedPlayers[0];
       const reasoning = topPlayer
         ? `${topPlayer.playerName} (Priority: ${topPlayer.priorityScore.toFixed(2)})`
+        : 'No players available';
+
+      rotations.push({
+        quarter,
+        swap,
+        playerIds,
+        minutesPerPlayer,
+        reasoning,
+      });
+    }
+
+    // Generate player summary
+    const playerSummary: GameRosterOptimization['playerSummary'] = {};
+
+    for (const playerId of attendingPlayerIds) {
+      const player = players.find(p => p.id === playerId);
+      if (!player) continue;
+
+      const totalMinutes = simulatedMinutes[playerId];
+      const rotationsPlayed = rotations
+        .map((r, index) => r.playerIds.includes(playerId) ? index + 1 : -1)
+        .filter(i => i !== -1);
+
+      const minutesDeviation = totalMinutes - targetMinutes;
+      const deviationPercent = targetMinutes > 0
+        ? (minutesDeviation / targetMinutes) * 100
+        : 0;
+
+      let priorityLevel: PriorityLevel;
+      let notes: string;
+
+      if (deviationPercent < -10) {
+        priorityLevel = 'high-priority';
+        notes = `Scheduled ${Math.round(totalMinutes)} min (${Math.round(deviationPercent)}% below target)`;
+      } else if (deviationPercent > 10) {
+        priorityLevel = 'low-priority';
+        notes = `Scheduled ${Math.round(totalMinutes)} min (${Math.round(deviationPercent)}% above target)`;
+      } else {
+        priorityLevel = 'medium';
+        notes = `Scheduled ${Math.round(totalMinutes)} min (balanced)`;
+      }
+
+      playerSummary[playerId] = {
+        totalMinutes,
+        rotationsPlayed,
+        priorityLevel,
+        notes,
+      };
+    }
+
+    // Calculate fairness score
+    const minutesArray = Object.values(simulatedMinutes);
+    const avgMinutes = minutesArray.reduce((sum, m) => sum + m, 0) / minutesArray.length;
+    const variance = minutesArray.reduce((sum, m) => sum + Math.pow(m - avgMinutes, 2), 0) / minutesArray.length;
+    const stdDev = Math.sqrt(variance);
+    const fairnessScore = Math.max(0, Math.min(100, 100 - (stdDev / 8) * 100));
+
+    return {
+      gameId,
+      rotations,
+      playerSummary,
+      fairnessScore: Math.round(fairnessScore),
+      generatedAt: Date.now(),
+    };
+  }
+
+  /**
+   * Optimize entire game roster using preferred algorithm.
+   * Simulates game progression to account for accumulated minutes after each swap.
+   */
+  static optimizeGameRosterPreferred(
+    gameId: string,
+    attendingPlayerIds: string[]
+  ): GameRosterOptimization {
+    const game = StorageService.getGames().find(g => g.id === gameId);
+    if (!game) {
+      throw new Error('Game not found');
+    }
+
+    const players = StorageService.getPlayers();
+    const allGames = StorageService.getGames();
+
+    // Calculate target minutes per player
+    const totalGameMinutes = 32;
+    const targetMinutes = attendingPlayerIds.length > 0
+      ? totalGameMinutes / attendingPlayerIds.length
+      : 0;
+
+    // Initialize tracking for simulated minutes and swaps
+    const simulatedMinutes: Record<string, number> = {};
+    const simulatedSwaps: Record<string, number> = {};
+
+    attendingPlayerIds.forEach(playerId => {
+      simulatedMinutes[playerId] = 0;
+      simulatedSwaps[playerId] = 0;
+    });
+
+    // Generate all 8 rotations
+    const rotations: OptimizedRotation[] = [];
+
+    for (let rotationNum = 1; rotationNum <= 8; rotationNum++) {
+      const quarter = Math.ceil(rotationNum / 2) as Quarter;
+      const swap = ((rotationNum - 1) % 2 + 1) as SwapNumber;
+
+      // Build player data for sorting
+      interface PlayerPreferredData {
+        playerId: string;
+        playerName: string;
+        currentGameTime: number;
+        currentGameSwaps: number;
+        previousGames: Array<{ time: number; swaps: number }>;
+        jerseyNumber: number;
+        createdAt: number;
+      }
+
+      const playerDataList: PlayerPreferredData[] = [];
+
+      for (const playerId of attendingPlayerIds) {
+        const player = players.find(p => p.id === playerId);
+        if (!player) continue;
+
+        // Current game data (simulated)
+        const currentGameTime = simulatedMinutes[playerId];
+        const currentGameSwaps = simulatedSwaps[playerId];
+
+        // Previous games data (all games except current)
+        const previousGames: Array<{ time: number; swaps: number }> = [];
+        for (const g of allGames) {
+          // Skip current game
+          if (g.id === gameId) continue;
+
+          // Only include games where player attended
+          if (g.attendance.includes(playerId)) {
+            const time = StatsService.calculatePlayTime(g.id, playerId);
+            const swaps = g.stats[playerId]?.swapsAttended ?? 8;
+            previousGames.push({ time, swaps });
+          }
+        }
+
+        // Parse jersey number as integer
+        const jerseyNumber = parseInt(player.number) || 999;
+
+        playerDataList.push({
+          playerId,
+          playerName: player.name,
+          currentGameTime,
+          currentGameSwaps,
+          previousGames,
+          jerseyNumber,
+          createdAt: player.createdAt,
+        });
+      }
+
+      // Sort according to preferred algorithm
+      playerDataList.sort((a, b) => {
+        // 1. Compare current game time (shortest first)
+        if (a.currentGameTime !== b.currentGameTime) {
+          return a.currentGameTime - b.currentGameTime;
+        }
+
+        // 2. Compare normalized time per swap in previous games (lowest first)
+        const aPrevSwaps = a.previousGames.reduce((sum, game) => sum + game.swaps, 0);
+        const bPrevSwaps = b.previousGames.reduce((sum, game) => sum + game.swaps, 0);
+        const aPrevTime = a.previousGames.reduce((sum, game) => sum + game.time, 0);
+        const bPrevTime = b.previousGames.reduce((sum, game) => sum + game.time, 0);
+
+        const aNormalized = aPrevSwaps > 0 ? aPrevTime / aPrevSwaps : Infinity;
+        const bNormalized = bPrevSwaps > 0 ? bPrevTime / bPrevSwaps : Infinity;
+
+        if (aNormalized !== bNormalized) {
+          return aNormalized - bNormalized;
+        }
+
+        // 3. Compare total previous swaps (most first)
+        if (aPrevSwaps !== bPrevSwaps) {
+          return bPrevSwaps - aPrevSwaps;
+        }
+
+        // 4. Compare combined normalized time
+        const aTotalSwaps = aPrevSwaps + a.currentGameSwaps;
+        const bTotalSwaps = bPrevSwaps + b.currentGameSwaps;
+        const aTotalTime = aPrevTime + a.currentGameTime;
+        const bTotalTime = bPrevTime + b.currentGameTime;
+
+        const aCombinedNormalized = aTotalSwaps > 0 ? aTotalTime / aTotalSwaps : Infinity;
+        const bCombinedNormalized = bTotalSwaps > 0 ? bTotalTime / bTotalSwaps : Infinity;
+
+        if (aCombinedNormalized !== bCombinedNormalized) {
+          return aCombinedNormalized - bCombinedNormalized;
+        }
+
+        // 5. Compare jersey numbers (lowest first)
+        return a.jerseyNumber - b.jerseyNumber;
+      });
+
+      // Select top 5 players
+      const selectedPlayers = playerDataList.slice(0, Math.min(5, attendingPlayerIds.length));
+      const playerIds = selectedPlayers.map(p => p.playerId);
+      const minutesPerPlayer: Record<string, number> = {};
+
+      // Assign 4 minutes to each selected player and update simulated stats
+      playerIds.forEach(playerId => {
+        minutesPerPlayer[playerId] = 4;
+        simulatedMinutes[playerId] += 4;
+        simulatedSwaps[playerId] += 1;
+      });
+
+      // Generate reasoning
+      const topPlayer = selectedPlayers[0];
+      const reasoning = topPlayer
+        ? `${topPlayer.playerName} (${topPlayer.currentGameTime} min current)`
         : 'No players available';
 
       rotations.push({
