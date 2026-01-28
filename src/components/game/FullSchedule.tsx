@@ -3,6 +3,7 @@ import type { Game, Player, Quarter, SwapNumber } from '@/types';
 import { Card } from '../common/Card';
 import { RotationService } from '@/services/rotation';
 import { StorageService } from '@/services/storage';
+import { StatsService } from '@/services/stats';
 
 interface FullScheduleProps {
   game: Game;
@@ -73,6 +74,55 @@ export function FullSchedule({ game, players }: FullScheduleProps) {
       }
     });
   }, [game.id, game.rotations.length, JSON.stringify(game.rotations), attendingPlayers, algorithm, recalcCounter]);
+
+  // Calculate player stats with projections including current scheduled game
+  const playerProjectedStats = useMemo(() => {
+    const statsMap: Record<string, {
+      historicalPlayTime: number;
+      historicalSwaps: number;
+      currentGameSwaps: number;
+      projectedTotalTime: number;
+      projectedTotalSwaps: number;
+      projectedNormalizedTime: number;
+    }> = {};
+
+    for (const player of attendingPlayers) {
+      // Get historical stats (excluding current game if it's in progress)
+      const seasonStats = StatsService.getPlayerSeasonStats(player.id);
+
+      // Calculate current game's projected swaps from fullSchedule
+      const currentGameSwaps = fullSchedule.filter(r => r.playerIds.includes(player.id)).length;
+      const currentGameMinutes = currentGameSwaps * 4; // Each swap is 4 minutes
+
+      // For historical stats, we need to subtract current game if it's already counted
+      const currentGameStats = game.stats[player.id];
+      const existingPlayTime = currentGameStats?.playTimeMinutes || 0;
+      const existingSwapsAttended = currentGameStats?.swapsAttended || 0;
+
+      // Historical values (without current game's existing recorded data)
+      const historicalPlayTime = seasonStats.playTimeMinutes - existingPlayTime;
+      const historicalSwaps = (seasonStats.gamesAttended * 8) - existingSwapsAttended;
+
+      // Projected totals (historical + full projected current game)
+      const projectedTotalTime = historicalPlayTime + currentGameMinutes;
+      const projectedTotalSwaps = historicalSwaps + 8; // Full game = 8 swaps attended
+
+      const projectedNormalizedTime = projectedTotalSwaps > 0
+        ? projectedTotalTime / (projectedTotalSwaps / 8) // Normalize by games (swaps/8)
+        : 0;
+
+      statsMap[player.id] = {
+        historicalPlayTime,
+        historicalSwaps,
+        currentGameSwaps,
+        projectedTotalTime,
+        projectedTotalSwaps,
+        projectedNormalizedTime,
+      };
+    }
+
+    return statsMap;
+  }, [attendingPlayers, fullSchedule, game.stats]);
 
   const handleAlgorithmToggle = () => {
     const newAlgorithm = algorithm === 'simple'
@@ -159,6 +209,14 @@ export function FullSchedule({ game, players }: FullScheduleProps) {
               <th className="border border-gray-300 bg-gray-100 p-2 text-center font-semibold">
                 Total
               </th>
+              <th className="border border-gray-300 bg-purple-100 p-2 text-center font-semibold" title="Total game time across all games (including this scheduled game)">
+                <div className="text-xs">Total</div>
+                <div className="text-xs">Time</div>
+              </th>
+              <th className="border border-gray-300 bg-purple-100 p-2 text-center font-semibold" title="Normalized game time (total time / games attended)">
+                <div className="text-xs">Norm</div>
+                <div className="text-xs">Time</div>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -201,6 +259,12 @@ export function FullSchedule({ game, players }: FullScheduleProps) {
                   <td className="border border-gray-300 p-2 text-center font-semibold bg-gray-50">
                     {totalSwaps}
                   </td>
+                  <td className="border border-gray-300 p-2 text-center font-semibold bg-purple-50">
+                    {playerProjectedStats[player.id]?.projectedTotalTime || 0}m
+                  </td>
+                  <td className="border border-gray-300 p-2 text-center font-semibold bg-purple-50">
+                    {(playerProjectedStats[player.id]?.projectedNormalizedTime || 0).toFixed(1)}m
+                  </td>
                 </tr>
               );
             })}
@@ -228,7 +292,15 @@ export function FullSchedule({ game, players }: FullScheduleProps) {
             <span className="text-lg font-bold">✓</span>
             <span>Player scheduled</span>
           </div>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-purple-100 border border-gray-300 rounded"></div>
+            <span>Projected stats (includes this game)</span>
+          </div>
         </div>
+        <p className="text-xs text-gray-600 mt-2">
+          <strong>Total Time:</strong> All games play time including projected time from this game's schedule.
+          <strong> Norm Time:</strong> Total time normalized by games attended.
+        </p>
       </Card>
     </div>
   );
