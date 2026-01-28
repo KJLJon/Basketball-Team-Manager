@@ -9,6 +9,7 @@ import { CurrentPlayerCard } from './CurrentPlayerCard';
 import { EditableStatRow } from './EditableStatRow';
 import { SwapsOverview } from './SwapsOverview';
 import { FullSchedule } from './FullSchedule';
+import { GameStatsGraphs } from './GameStatsGraphs';
 import { GameService } from '@/services/game';
 import { StatsService } from '@/services/stats';
 import { RotationService } from '@/services/rotation';
@@ -37,6 +38,7 @@ export function GameDay({ game, players, onRefresh }: GameDayProps) {
   };
 
   const [sortBy, setSortBy] = useState<'name' | 'number'>('name');
+  const [statsSubView, setStatsSubView] = useState<'details' | 'graphs'>('details');
 
   const attendingPlayers = players.filter(p => game.attendance.includes(p.id));
 
@@ -325,18 +327,48 @@ export function GameDay({ game, players, onRefresh }: GameDayProps) {
 
         {currentView === 'stats' && (
           <>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">All Players</h3>
+            {/* Stats Sub-Nav */}
+            <div className="flex gap-2 mb-4">
               <button
                 type="button"
-                onClick={() => setSortBy(sortBy === 'name' ? 'number' : 'name')}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                onClick={() => setStatsSubView('details')}
+                className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-colors ${
+                  statsSubView === 'details'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
               >
-                Sort by {sortBy === 'name' ? 'Number' : 'Name'}
+                Details
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatsSubView('graphs')}
+                className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-colors ${
+                  statsSubView === 'graphs'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Graphs
               </button>
             </div>
 
-            <div className="space-y-3">
+            {statsSubView === 'graphs' ? (
+              <GameStatsGraphs game={game} players={attendingPlayers} />
+            ) : (
+              <>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold">All Players</h3>
+                  <button
+                    type="button"
+                    onClick={() => setSortBy(sortBy === 'name' ? 'number' : 'name')}
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Sort by {sortBy === 'name' ? 'Number' : 'Name'}
+                  </button>
+                </div>
+
+                <div className="space-y-3">
               {sortedAllPlayers.map(player => {
                 const stats = StatsService.getPlayerGameStats(game.id, player.id);
                 const totalPoints = stats.made1pt + stats.made2pt * 2 + stats.made3pt * 3;
@@ -435,7 +467,9 @@ export function GameDay({ game, players, onRefresh }: GameDayProps) {
                   </Card>
                 );
               })}
-            </div>
+                </div>
+              </>
+            )}
           </>
         )}
       </div>

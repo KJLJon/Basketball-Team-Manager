@@ -5,6 +5,7 @@ import { Card } from '../common/Card';
 import { Button } from '../common/Button';
 import { StatsService } from '@/services/stats';
 import { GameService } from '@/services/game';
+import { StatsGraphs } from './StatsGraphs';
 
 interface StatsDashboardProps {
   players: Player[];
@@ -12,6 +13,7 @@ interface StatsDashboardProps {
 
 export function StatsDashboard({ players }: StatsDashboardProps) {
   const navigate = useNavigate();
+  const [view, setView] = useState<'detailed' | 'graphs'>('detailed');
   const [sortBy, setSortBy] = useState<keyof PlayerSeasonStats>('normalizedPlayTime');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
@@ -76,8 +78,38 @@ export function StatsDashboard({ players }: StatsDashboardProps) {
         <h2 className="text-2xl font-bold">Team Statistics</h2>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* View Toggle */}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setView('detailed')}
+          className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-colors ${
+            view === 'detailed'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          Detailed
+        </button>
+        <button
+          type="button"
+          onClick={() => setView('graphs')}
+          className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-colors ${
+            view === 'graphs'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          Graphs
+        </button>
+      </div>
+
+      {view === 'graphs' ? (
+        <StatsGraphs players={players} />
+      ) : (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 gap-3">
         <Card className="text-center">
           <div className="text-2xl font-bold text-blue-600">{players.length}</div>
           <div className="text-sm text-gray-600">Total Players</div>
@@ -183,7 +215,9 @@ export function StatsDashboard({ players }: StatsDashboardProps) {
             );
           })
         )}
-      </div>
+        </div>
+        </>
+      )}
     </div>
   );
 }
