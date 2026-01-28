@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/common/Layout';
+import { ScrollToTop } from './components/common/ScrollToTop';
 import { Home } from './pages/Home';
 import { Players } from './pages/Players';
 import { Schedule } from './pages/Schedule';
@@ -19,6 +20,7 @@ function App() {
 
   return (
     <BrowserRouter basename="/Basketball-Team-Manager">
+      <ScrollToTop />
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
