@@ -289,7 +289,7 @@ When all phases complete:
 ### Branding Reminders
 - Team: **Bucket Ducks**
 - Colors: Blue-600 primary, orange accents
-- Logo: `/public/team-logo.svg`
+- Logo: `/public/logo.jpeg`
 
 ### Tech Stack
 - Vite + React 19 + TypeScript

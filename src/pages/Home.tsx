@@ -72,7 +72,7 @@ export function Home() {
   return (
     <div className="p-4 space-y-4">
       <div className="text-center py-6">
-        <img src="/team-logo.svg" alt="Bucket Ducks" className="w-24 h-24 mx-auto mb-3" />
+        <img src="/Basketball-Team-Manager/logo.jpeg" alt="Bucket Ducks" className="w-24 h-24 mx-auto mb-3" />
         <h1 className="text-3xl font-bold text-blue-600 mb-2">Welcome Coach!</h1>
         <p className="text-gray-600">Manage your team with ease</p>
       </div>

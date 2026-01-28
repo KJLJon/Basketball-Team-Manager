@@ -32,7 +32,7 @@ npm run test     # Run tests
   /hooks           # usePlayers, useGames, useLocalStorage
   /types           # index.ts (all TypeScript interfaces)
   /utils           # export.ts, date.ts
-/public            # team-logo.svg, 404.html
+/public            # logo.jpeg, 404.html
 ```
 
 ## Game Structure
@@ -64,5 +64,5 @@ For detailed component info, read these files as needed:
 
 ## Branding
 - Team: **Bucket Ducks**
-- Logo: `/public/team-logo.svg`
+- Logo: `/public/logo.jpeg`
 - Colors: Blue-600 primary, orange accents

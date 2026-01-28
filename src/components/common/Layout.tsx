@@ -17,7 +17,7 @@ export function Layout({ children }: LayoutProps) {
       {/* Header */}
       <header className="bg-blue-600 text-white py-3 px-4 shadow-lg">
         <div className="flex items-center justify-center gap-3">
-          <img src="/team-logo.svg" alt="Bucket Ducks" className="w-10 h-10" />
+          <img src="/Basketball-Team-Manager/logo.jpeg" alt="Bucket Ducks" className="w-10 h-10" />
           <h1 className="text-xl font-bold">Bucket Ducks</h1>
         </div>
       </header>
