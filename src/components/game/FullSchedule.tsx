@@ -241,10 +241,11 @@ export function FullSchedule({ game, players, onGameUpdate }: FullScheduleProps)
 
   // Handle clicking a cell in manual mode to toggle a player
   const handleCellClick = useCallback((quarter: Quarter, swap: SwapNumber, playerId: string, isActual: boolean, rotationNum: number) => {
-    // Only allow editing in manual mode for future rotations
+    // Only allow editing in manual mode
     if (algorithm !== 'manual') return;
-    if (isActual) return; // Can't edit actual/past rotations
-    if (rotationNum <= currentRotationNum) return; // Can't edit current or past rotations
+    if (isActual) return; // Can't edit actual/started rotations
+    // Allow editing current rotation if not started, or any future rotation
+    if (rotationNum < currentRotationNum) return; // Can't edit past rotations
 
     const key = `Q${quarter}S${swap}`;
     const currentPlayers = manualSelections[key] || [];
@@ -390,7 +391,8 @@ export function FullSchedule({ game, players, onGameUpdate }: FullScheduleProps)
                     const isPast = rotationNum < currentRotationNum;
                     const isCurrent = rotationNum === currentRotationNum;
                     const isFuture = rotationNum > currentRotationNum;
-                    const isEditable = algorithm === 'manual' && isFuture && !isActual;
+                    // Editable if: manual mode AND (future rotation OR current rotation that hasn't started yet)
+                    const isEditable = algorithm === 'manual' && !isActual && (isFuture || isCurrent);
 
                     const bgColor = isPast
                       ? 'bg-green-100'
