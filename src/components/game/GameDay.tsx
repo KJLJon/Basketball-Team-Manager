@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { Game, Player, Quarter, SwapNumber } from '@/types';
 import { Button } from '../common/Button';
 import { Card } from '../common/Card';
@@ -19,12 +19,23 @@ interface GameDayProps {
   onRefresh: () => void;
 }
 
+type TabView = 'rotation' | 'current' | 'stats' | 'swaps' | 'schedule';
+const validTabs: TabView[] = ['rotation', 'current', 'stats', 'swaps', 'schedule'];
+
 export function GameDay({ game, players, onRefresh }: GameDayProps) {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isCompleted = game.status === 'completed';
-  const [currentView, setCurrentView] = useState<'rotation' | 'current' | 'stats' | 'swaps' | 'schedule'>(
-    isCompleted ? 'stats' : 'rotation'
-  );
+
+  // Get tab from URL or use default based on game status
+  const tabFromUrl = searchParams.get('tab') as TabView | null;
+  const defaultTab: TabView = isCompleted ? 'stats' : 'rotation';
+  const currentView: TabView = tabFromUrl && validTabs.includes(tabFromUrl) ? tabFromUrl : defaultTab;
+
+  const setCurrentView = (tab: TabView) => {
+    setSearchParams({ tab }, { replace: true });
+  };
+
   const [sortBy, setSortBy] = useState<'name' | 'number'>('name');
 
   const attendingPlayers = players.filter(p => game.attendance.includes(p.id));
