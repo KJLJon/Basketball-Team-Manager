@@ -228,7 +228,7 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
   const selectedPlayerStats = selectedPlayer ? StatsService.getPlayerGameStats(game.id, selectedPlayer) : null;
 
   return (
-    <div className="space-y-4 pb-24">
+    <div className="space-y-4 pb-32">
       {/* Action buttons */}
       <div className="flex gap-2 flex-wrap">
         <Button
@@ -256,7 +256,6 @@ export function SwapsOverview({ game, players, allPlayers, onRefresh }: SwapsOve
         {/* Scrollable table container */}
         <div
           className="overflow-auto border border-gray-300 rounded"
-          style={{ maxHeight: '60vh' }}
         >
           <table className="text-xs border-collapse" style={{ minWidth: 'max-content' }}>
             <thead>
