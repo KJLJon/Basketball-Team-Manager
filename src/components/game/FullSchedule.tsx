@@ -275,7 +275,7 @@ export function FullSchedule({ game, players, onGameUpdate }: FullScheduleProps)
   const sortedPlayers = [...attendingPlayers].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <div className="space-y-4 pb-24">
+    <div className="space-y-4 pb-32">
       <Card className="bg-blue-50 border-blue-200">
         <div className="flex items-start gap-2 mb-3">
           <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">

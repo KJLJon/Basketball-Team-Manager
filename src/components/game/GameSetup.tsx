@@ -13,11 +13,23 @@ interface GameSetupProps {
 }
 
 export function GameSetup({ game, players, onUpdateAttendance, onStartGame }: GameSetupProps) {
-  const [selectedPlayers, setSelectedPlayers] = useState<string[]>(game.attendance);
   const navigate = useNavigate();
 
+  // Pre-select all players if game hasn't started and no attendance recorded yet
+  const getInitialSelection = () => {
+    if (game.status === 'scheduled' && game.attendance.length === 0) {
+      return players.map(p => p.id);
+    }
+    return game.attendance;
+  };
+
+  const [selectedPlayers, setSelectedPlayers] = useState<string[]>(getInitialSelection);
+
   useEffect(() => {
-    setSelectedPlayers(game.attendance);
+    // Only sync with game.attendance if game has actual attendance recorded
+    if (game.attendance.length > 0) {
+      setSelectedPlayers(game.attendance);
+    }
   }, [game.attendance]);
 
   const togglePlayer = (playerId: string) => {
