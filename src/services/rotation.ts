@@ -531,12 +531,22 @@ export class RotationService {
       : 0;
 
     // Initialize tracking for simulated minutes and attendance
+    // Start with actual data from completed rotations
     const simulatedMinutes: Record<string, number> = {};
     const simulatedAttendance: Record<string, number> = {}; // Fractional (0-1)
 
     attendingPlayerIds.forEach(playerId => {
-      simulatedMinutes[playerId] = 0;
-      simulatedAttendance[playerId] = 0; // Will increment by 1/8 per rotation
+      // Initialize with actual play time from this game
+      simulatedMinutes[playerId] = StatsService.calculatePlayTime(gameId, playerId);
+
+      // Calculate actual attendance (fractional) based on rotations played
+      let rotationsPlayed = 0;
+      for (const rotation of game.rotations) {
+        if (rotation.playersOnCourt.includes(playerId)) {
+          rotationsPlayed++;
+        }
+      }
+      simulatedAttendance[playerId] = rotationsPlayed / 8; // Convert to fractional (0-1)
     });
 
     // Generate all 8 rotations
@@ -546,6 +556,32 @@ export class RotationService {
       const quarter = Math.ceil(rotationNum / 2) as Quarter;
       const swap = ((rotationNum - 1) % 2 + 1) as SwapNumber;
 
+      // Check if this rotation has already been played
+      const existingRotation = game.rotations.find(
+        r => r.quarter === quarter && r.swap === swap
+      );
+
+      if (existingRotation) {
+        // Use actual rotation data - don't simulate
+        const minutesPerPlayer: Record<string, number> = {};
+        existingRotation.playersOnCourt.forEach(playerId => {
+          const minutes = existingRotation.playerMinutes?.[playerId] ?? existingRotation.minutes ?? 4;
+          minutesPerPlayer[playerId] = minutes;
+        });
+
+        rotations.push({
+          quarter,
+          swap,
+          playerIds: existingRotation.playersOnCourt,
+          minutesPerPlayer,
+          reasoning: 'Actual rotation (played)',
+        });
+
+        // Note: simulated stats were already initialized with actual data at the start
+        continue;
+      }
+
+      // This rotation hasn't been played yet - simulate it
       // Calculate normalized time for each player with simulated stats
       const playerPriorities: Array<{
         playerId: string;
@@ -561,7 +597,7 @@ export class RotationService {
         // Get historical stats (not including current game)
         const seasonStats = StatsService.getPlayerSeasonStats(playerId);
 
-        // Simulated current game stats
+        // Simulated current game stats (includes actual + projected)
         const currentGameMinutes = simulatedMinutes[playerId];
         const currentGameAttendance = simulatedAttendance[playerId];
 
@@ -702,9 +738,11 @@ export class RotationService {
       : 0;
 
     // Initialize tracking for simulated minutes
+    // Start with actual data from completed rotations
     const simulatedMinutes: Record<string, number> = {};
     attendingPlayerIds.forEach(playerId => {
-      simulatedMinutes[playerId] = 0;
+      // Initialize with actual play time from this game
+      simulatedMinutes[playerId] = StatsService.calculatePlayTime(gameId, playerId);
     });
 
     // Generate all 8 rotations
@@ -714,6 +752,32 @@ export class RotationService {
       const quarter = Math.ceil(rotationNum / 2) as Quarter;
       const swap = ((rotationNum - 1) % 2 + 1) as SwapNumber;
 
+      // Check if this rotation has already been played
+      const existingRotation = game.rotations.find(
+        r => r.quarter === quarter && r.swap === swap
+      );
+
+      if (existingRotation) {
+        // Use actual rotation data - don't simulate
+        const minutesPerPlayer: Record<string, number> = {};
+        existingRotation.playersOnCourt.forEach(playerId => {
+          const minutes = existingRotation.playerMinutes?.[playerId] ?? existingRotation.minutes ?? 4;
+          minutesPerPlayer[playerId] = minutes;
+        });
+
+        rotations.push({
+          quarter,
+          swap,
+          playerIds: existingRotation.playersOnCourt,
+          minutesPerPlayer,
+          reasoning: 'Actual rotation (played)',
+        });
+
+        // Note: simulated stats were already initialized with actual data at the start
+        continue;
+      }
+
+      // This rotation hasn't been played yet - simulate it
       // Calculate priority scores for each player
       const priorities: PlayerRotationPriority[] = [];
 
@@ -875,6 +939,7 @@ export class RotationService {
   /**
    * Optimize entire game roster using preferred algorithm.
    * Simulates game progression to account for accumulated minutes after each swap.
+   * Accounts for actual rotations that have already been played.
    */
   static optimizeGameRosterPreferred(
     gameId: string,
@@ -895,12 +960,22 @@ export class RotationService {
       : 0;
 
     // Initialize tracking for simulated minutes and swaps
+    // Start with actual data from completed rotations
     const simulatedMinutes: Record<string, number> = {};
     const simulatedSwaps: Record<string, number> = {};
 
     attendingPlayerIds.forEach(playerId => {
-      simulatedMinutes[playerId] = 0;
-      simulatedSwaps[playerId] = 0;
+      // Initialize with actual play time from this game
+      simulatedMinutes[playerId] = StatsService.calculatePlayTime(gameId, playerId);
+
+      // Calculate actual swaps attended so far
+      let swapsAttended = 0;
+      for (const rotation of game.rotations) {
+        if (rotation.playersOnCourt.includes(playerId)) {
+          swapsAttended++;
+        }
+      }
+      simulatedSwaps[playerId] = swapsAttended;
     });
 
     // Generate all 8 rotations
@@ -910,6 +985,32 @@ export class RotationService {
       const quarter = Math.ceil(rotationNum / 2) as Quarter;
       const swap = ((rotationNum - 1) % 2 + 1) as SwapNumber;
 
+      // Check if this rotation has already been played
+      const existingRotation = game.rotations.find(
+        r => r.quarter === quarter && r.swap === swap
+      );
+
+      if (existingRotation) {
+        // Use actual rotation data - don't simulate
+        const minutesPerPlayer: Record<string, number> = {};
+        existingRotation.playersOnCourt.forEach(playerId => {
+          const minutes = existingRotation.playerMinutes?.[playerId] ?? existingRotation.minutes ?? 4;
+          minutesPerPlayer[playerId] = minutes;
+        });
+
+        rotations.push({
+          quarter,
+          swap,
+          playerIds: existingRotation.playersOnCourt,
+          minutesPerPlayer,
+          reasoning: 'Actual rotation (played)',
+        });
+
+        // Note: simulated stats were already initialized with actual data at the start
+        continue;
+      }
+
+      // This rotation hasn't been played yet - simulate it
       // Build player data for sorting
       interface PlayerPreferredData {
         playerId: string;
@@ -927,7 +1028,7 @@ export class RotationService {
         const player = players.find(p => p.id === playerId);
         if (!player) continue;
 
-        // Current game data (simulated)
+        // Current game data (includes actual + simulated)
         const currentGameTime = simulatedMinutes[playerId];
         const currentGameSwaps = simulatedSwaps[playerId];
 
