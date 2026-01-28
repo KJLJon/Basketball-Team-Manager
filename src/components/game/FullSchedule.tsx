@@ -14,6 +14,7 @@ export function FullSchedule({ game, players }: FullScheduleProps) {
   const [algorithm, setAlgorithm] = useState<'simple' | 'weighted' | 'preferred'>(
     StorageService.getRotationAlgorithm()
   );
+  const [recalcCounter, setRecalcCounter] = useState(0); // Force recalculation trigger
 
   // Get all quarter/swap combinations
   const quarterSwaps: Array<{ quarter: Quarter; swap: SwapNumber; rotationNum: number }> = [];
@@ -71,7 +72,7 @@ export function FullSchedule({ game, players }: FullScheduleProps) {
         };
       }
     });
-  }, [game, attendingPlayers, algorithm, quarterSwaps]);
+  }, [game.id, game.rotations.length, JSON.stringify(game.rotations), attendingPlayers, algorithm, recalcCounter]);
 
   const handleAlgorithmToggle = () => {
     const newAlgorithm = algorithm === 'simple'
@@ -81,6 +82,10 @@ export function FullSchedule({ game, players }: FullScheduleProps) {
       : 'simple';
     setAlgorithm(newAlgorithm);
     StorageService.setRotationAlgorithm(newAlgorithm);
+  };
+
+  const handleRecalculate = () => {
+    setRecalcCounter(prev => prev + 1);
   };
 
   // Sort players by name
@@ -101,17 +106,26 @@ export function FullSchedule({ game, players }: FullScheduleProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 pt-2 border-t border-blue-200">
-          <span className="text-sm font-medium text-blue-900">Algorithm:</span>
+        <div className="flex items-center gap-3 pt-2 border-t border-blue-200">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-blue-900">Algorithm:</span>
+            <button
+              onClick={handleAlgorithmToggle}
+              className="px-3 py-1 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            >
+              {algorithm === 'simple' ? 'Simple' : algorithm === 'weighted' ? 'Weighted' : 'Preferred'}
+            </button>
+          </div>
           <button
-            onClick={handleAlgorithmToggle}
-            className="px-3 py-1 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            onClick={handleRecalculate}
+            className="px-3 py-1 text-sm rounded bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center gap-1"
+            title="Recalculate schedule based on current game state"
           >
-            {algorithm === 'simple' ? 'Simple' : algorithm === 'weighted' ? 'Weighted' : 'Preferred'}
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Recalculate
           </button>
-          <span className="text-xs text-blue-700">
-            (Click to toggle)
-          </span>
         </div>
       </Card>
 
