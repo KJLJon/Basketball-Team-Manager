@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/common/Layout';
 import { ScrollToTop } from './components/common/ScrollToTop';
+import { UpdateBanner } from './components/common/UpdateBanner';
 import { Home } from './pages/Home';
 import { Players } from './pages/Players';
 import { Schedule } from './pages/Schedule';
@@ -11,8 +12,11 @@ import { GameSetupPage } from './pages/GameSetupPage';
 import { GameDayPage } from './pages/GameDayPage';
 import { PlayerDetailPage } from './pages/PlayerDetailPage';
 import { GameService } from './services/game';
+import { useServiceWorker } from './hooks/useServiceWorker';
 
 function App() {
+  const { showUpdateBanner, updateServiceWorker, dismissUpdate } = useServiceWorker();
+
   // Run migration on app load to convert old rotation format to new playerMinutes format
   useEffect(() => {
     GameService.migrateToPlayerMinutes();
@@ -21,6 +25,9 @@ function App() {
   return (
     <BrowserRouter basename="/Basketball-Team-Manager">
       <ScrollToTop />
+      {showUpdateBanner && (
+        <UpdateBanner onUpdate={updateServiceWorker} onDismiss={dismissUpdate} />
+      )}
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />

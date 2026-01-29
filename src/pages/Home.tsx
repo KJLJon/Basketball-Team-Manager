@@ -199,6 +199,11 @@ export function Home() {
           </Link>
         </Card>
       )}
+
+      {/* Build Info */}
+      <div className="text-center py-4 text-xs text-gray-500">
+        Last updated: {new Date(__BUILD_TIME__).toLocaleString()}
+      </div>
     </div>
   );
 }
