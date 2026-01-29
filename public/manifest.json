@@ -1,0 +1,21 @@
+{
+  "name": "Bucket Ducks Team Manager",
+  "short_name": "Bucket Ducks",
+  "description": "Youth basketball team management app for tracking players, games, rotations, and statistics",
+  "start_url": "/Basketball-Team-Manager/",
+  "scope": "/Basketball-Team-Manager/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/Basketball-Team-Manager/logo.jpeg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["sports", "productivity"],
+  "screenshots": []
+}
