@@ -47,24 +47,29 @@ export function SimpleBarChart({
     );
   }
 
+  const chartHeightPx = 128; // h-32 = 128px
+
   return (
     <div className="space-y-2">
       <h4 className="font-semibold text-sm">{title}</h4>
-      <div className="flex items-end gap-1 h-32">
-        {data.map((item, index) => (
-          <div key={index} className="flex-1 flex flex-col items-center gap-1">
-            <div className="flex-1 w-full flex items-end justify-center">
-              <div
-                className={`w-full max-w-8 ${item.color || 'bg-blue-500'} rounded-t transition-all duration-300`}
-                style={{ height: `${(item.value / maxValue) * 100}%`, minHeight: item.value > 0 ? '4px' : '0' }}
-              />
+      <div className="flex items-end justify-around gap-1 pb-6">
+        {data.map((item, index) => {
+          const barHeight = (item.value / maxValue) * chartHeightPx;
+          return (
+            <div key={index} className="flex flex-col items-center gap-1 min-w-0 flex-1">
+              <div className="w-full flex items-end justify-center" style={{ height: `${chartHeightPx}px` }}>
+                <div
+                  className={`w-full max-w-8 ${item.color || 'bg-blue-500'} rounded-t transition-all duration-300`}
+                  style={{ height: `${barHeight}px`, minHeight: item.value > 0 ? '4px' : '0' }}
+                />
+              </div>
+              {showValues && (
+                <div className="text-xs font-medium">{item.value}</div>
+              )}
+              <div className="text-[10px] text-gray-600 text-center truncate w-full">{item.label}</div>
             </div>
-            {showValues && (
-              <div className="text-xs font-medium">{item.value}</div>
-            )}
-            <div className="text-[10px] text-gray-600 text-center truncate w-full">{item.label}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
